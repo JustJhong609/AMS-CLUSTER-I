@@ -1,0 +1,244 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20%,
+  60% {
+    transform: translateX(-5px);
+  }
+
+  40%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+
+ion-page {
+  animation: fadeIn 0.25s ease;
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ion-color-primary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 20px 16px 6px;
+}
+
+ion-card {
+  border-radius: var(--app-card-radius);
+  box-shadow: var(--app-shadow-sm);
+  margin: 8px 16px;
+  transition: var(--app-transition);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+ion-card:active {
+  transform: scale(0.985);
+  box-shadow: var(--app-shadow-md);
+}
+
+.form-group {
+  margin-bottom: 18px;
+  animation: fadeSlideUp 0.22s ease both;
+}
+
+.form-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 8px;
+  display: block;
+  letter-spacing: 0.2px;
+}
+
+.error-text {
+  font-size: 12px;
+  color: var(--ion-color-danger);
+  margin-top: 6px;
+  padding-left: 4px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  animation: shake 0.35s ease;
+}
+
+.error-text::before {
+  content: '\26A0';
+  font-size: 11px;
+}
+
+ion-input,
+ion-select,
+ion-textarea {
+  --border-radius: 12px !important;
+  --highlight-color-focused: var(--ion-color-primary);
+  transition: var(--app-transition);
+}
+
+.step-bar {
+  display: flex;
+  align-items: center;
+  padding: 10px 8px;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  overflow-x: auto;
+  gap: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  position: relative;
+  min-width: 52px;
+}
+
+.step-item::before {
+  content: '';
+  position: absolute;
+  top: 17px;
+  right: 50%;
+  left: -50%;
+  height: 2px;
+  background: #e2e8f0;
+  z-index: 0;
+  transition: background 0.3s ease;
+}
+
+.step-item:first-child::before {
+  display: none;
+}
+
+.step-item.active::before,
+.step-item.done::before {
+  background: var(--ion-color-primary);
+}
+
+.step-circle {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid #e2e8f0;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #9ca3af;
+  position: relative;
+  z-index: 1;
+  transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.step-item.active .step-circle {
+  border-color: var(--ion-color-primary);
+  background: var(--ion-color-primary);
+  color: #fff;
+  transform: scale(1.15);
+  box-shadow: 0 0 0 4px rgba(21, 101, 192, 0.18);
+}
+
+.step-item.done .step-circle {
+  border-color: var(--ion-color-success);
+  background: var(--ion-color-success);
+  color: #fff;
+}
+
+.step-label {
+  font-size: 9px;
+  margin-top: 5px;
+  color: #94a3b8;
+  text-align: center;
+  font-weight: 600;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+
+.step-item.active .step-label {
+  color: var(--ion-color-primary);
+  font-weight: 800;
+}
+
+.step-item.done .step-label {
+  color: var(--ion-color-success);
+}
+
+ion-modal.modal-sheet .modal-wrapper,
+ion-modal::part(content) {
+  border-radius: 28px 28px 0 0 !important;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.14), 0 -2px 8px rgba(0, 0, 0, 0.06) !important;
+  overflow: hidden;
+}
+
+ion-modal {
+  --backdrop-opacity: 0.45;
+  --ion-backdrop-color: #0d47a1;
+}
+
+ion-modal::part(handle) {
+  width: 40px;
+  height: 4px;
+  border-radius: 4px;
+  background: #cbd5e1;
+  margin: 12px auto 0;
+}
+
+@media (max-width: 560px) {
+  ion-card {
+    margin-left: 14px;
+    margin-right: 14px;
+  }
+}
