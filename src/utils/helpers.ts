@@ -68,3 +68,16 @@ export const calculateAge = (dateString: string): number => {
   }
   return age;
 };
+
+export const formatDate = (dateString: string): string => {
+  if (!dateString) return '—';
+
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return dateString;
+
+  return new Intl.DateTimeFormat('en-PH', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  }).format(date);
+};

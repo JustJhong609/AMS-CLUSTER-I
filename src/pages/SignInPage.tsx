@@ -30,23 +30,74 @@ const SignInPage: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent style={s.container}>
+      <IonContent className="auth-page" style={{ '--background': 'linear-gradient(145deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%)' } as React.CSSProperties}>
+        <style>{`
+          .auth-page {
+            --padding-top: 18px;
+            --padding-bottom: 20px;
+          }
+          .auth-shell {
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 14px;
+          }
+          .auth-topbar {
+            margin-bottom: 16px;
+          }
+          .auth-content {
+            width: 100%;
+            max-width: 100%;
+          }
+          .auth-card {
+            border-radius: 22px;
+          }
+          .auth-form-content {
+            padding: 24px 18px;
+          }
+          .auth-row {
+            grid-template-columns: 1fr;
+          }
+          @media (min-width: 768px) {
+            .auth-page {
+              --padding-top: 28px;
+              --padding-bottom: 28px;
+            }
+            .auth-shell {
+              padding: 0 20px;
+            }
+            .auth-topbar {
+              margin-bottom: 24px;
+            }
+            .auth-content {
+              max-width: 460px;
+            }
+            .auth-card {
+              border-radius: 24px;
+            }
+            .auth-form-content {
+              padding: 32px 24px;
+            }
+          }
+        `}</style>
+        <div className="auth-shell">
         <div style={s.bgPattern} />
 
-        <div style={s.topBar}>
+        <div className="auth-topbar" style={s.topBar}>
           <button style={s.backBtn} onClick={() => history.goBack()}>
             <IonIcon icon={arrowBackOutline} style={{ color: '#fff', fontSize: 24 }} />
           </button>
         </div>
 
-        <div style={s.content}>
+        <div className="auth-content" style={s.content}>
           <div style={s.header}>
             <h1 style={s.title}>Welcome Back</h1>
             <p style={s.subtitle}>Sign in to your ALS Mapper account</p>
           </div>
 
-          <IonCard style={s.formCard}>
-            <IonCardContent style={s.formContent}>
+          <IonCard className="auth-card" style={s.formCard}>
+            <IonCardContent className="auth-form-content" style={s.formContent}>
               <form onSubmit={handleSignIn} style={s.form}>
                 <div style={s.formGroup}>
                   <label style={s.label}>Email Address</label>
@@ -100,6 +151,7 @@ const SignInPage: React.FC = () => {
             </IonCardContent>
           </IonCard>
         </div>
+        </div>
       </IonContent>
     </IonPage>
   );
@@ -108,10 +160,9 @@ const SignInPage: React.FC = () => {
 const s: Record<string, React.CSSProperties> = {
   container: {
     position: 'relative',
-    background: 'linear-gradient(145deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%)',
     display: 'flex',
     flexDirection: 'column',
-    minHeight: '100vh',
+    minHeight: '100%',
     padding: '20px'
   },
   bgPattern: {
@@ -153,18 +204,18 @@ const s: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
-    maxWidth: '420px',
+    maxWidth: '100%',
     width: '100%',
     margin: '0 auto'
   },
   header: {
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
     animation: 'fadeSlideUp 0.4s ease both'
   },
   title: {
     color: '#fff',
-    fontSize: 32,
+    fontSize: 'clamp(26px, 7vw, 32px)',
     fontWeight: 900,
     margin: '0 0 8px',
     lineHeight: 1.2,
@@ -179,19 +230,19 @@ const s: Record<string, React.CSSProperties> = {
   },
   formCard: {
     width: '100%',
-    borderRadius: 24,
+    borderRadius: 22,
     boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    border: '1px solid rgba(255,255,255,0.16)',
     background: '#fff',
     animation: 'fadeSlideUp 0.5s ease both'
   },
   formContent: {
-    padding: '32px 24px'
+    padding: '24px 18px'
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 20
+    gap: 16
   },
   formGroup: {
     display: 'flex',
@@ -205,7 +256,7 @@ const s: Record<string, React.CSSProperties> = {
     letterSpacing: 0.2
   },
   input: {
-    padding: '12px 16px',
+    padding: '12px 14px',
     borderRadius: 12,
     border: '1.5px solid #e2e8f0',
     fontSize: 14,
@@ -228,7 +279,7 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     gap: 16,
-    margin: '12px 0',
+    margin: '10px 0',
     position: 'relative'
   },
   dividerText: {

@@ -1,5 +1,6 @@
 import React from 'react';
-import { IonButton, IonContent, IonPage } from '@ionic/react';
+import { IonButton, IonContent, IonIcon, IonPage } from '@ionic/react';
+import { logInOutline, personAddOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 
 const LandingPage: React.FC = () => {
@@ -7,69 +8,118 @@ const LandingPage: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent style={s.container}>
+      <IonContent className="landing-page" style={{ '--background': 'linear-gradient(145deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%)' } as React.CSSProperties}>
+        <style>{`
+          .landing-page {
+            --padding-top: 22px;
+            --padding-bottom: 28px;
+          }
+          .landing-shell {
+            min-height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 14px 0;
+          }
+          .landing-content {
+            width: 100%;
+          }
+          .landing-buttons {
+            flex-direction: column;
+            max-width: 100%;
+          }
+          .landing-buttons ion-button {
+            width: 100%;
+          }
+          .landing-features {
+            grid-template-columns: 1fr;
+            margin-top: 28px;
+          }
+          @media (min-width: 768px) {
+            .landing-page {
+              --padding-top: 32px;
+              --padding-bottom: 32px;
+            }
+            .landing-shell {
+              padding: 0 20px;
+            }
+            .landing-buttons {
+              flex-direction: row;
+              max-width: 520px;
+            }
+            .landing-buttons ion-button {
+              width: auto;
+            }
+            .landing-features {
+              grid-template-columns: repeat(3, minmax(140px, 1fr));
+              margin-top: 40px;
+            }
+          }
+        `}</style>
         <div style={s.bgPattern} />
 
-        <div style={s.content}>
-          {/* Logo placeholder */}
-          <div style={s.logoPlaceholder}>
-            <div style={s.logoCircle}>ALS</div>
-          </div>
+        <div className="landing-shell">
+          <div className="landing-content" style={s.content}>
+            {/* Logo placeholder */}
+            <div style={s.logoPlaceholder}>
+              <div style={s.logoCircle}>ALS</div>
+            </div>
 
-          {/* Main heading */}
-          <h1 style={s.title}>ALS CLUSTER I<br />Mapping System</h1>
+            {/* Main heading */}
+            <h1 style={s.title}>ALS CLUSTER I<br />Mapping System</h1>
 
-          {/* Subtitle */}
-          <p style={s.subtitle}>Learner Registration & Community Mapping Platform</p>
+            {/* Subtitle */}
+            <p style={s.subtitle}>Learner Registration & Community Mapping Platform</p>
 
-          {/* Description */}
-          <p style={s.description}>
-            A community-based registration platform for identifying and supporting out-of-school youth and adult learners across Bukidnon Cluster I municipalities.
-          </p>
+            {/* Description */}
+            <p style={s.description}>
+              A community-based registration platform for identifying and supporting out-of-school youth and adult learners across Bukidnon Cluster I municipalities.
+            </p>
 
-          {/* Buttons */}
-          <div style={s.buttonGroup}>
-            <IonButton
-              expand="block"
-              style={s.signInButton}
-              onClick={() => history.push('/sign-in')}
-            >
-              Sign In
-            </IonButton>
-            <IonButton
-              expand="block"
-              style={s.signUpButton}
-              onClick={() => history.push('/sign-up')}
-            >
-              Create Account
-            </IonButton>
-          </div>
+            {/* Buttons */}
+            <div className="landing-buttons" style={s.buttonGroup}>
+              <IonButton
+                style={s.signInButton}
+                onClick={() => history.push('/sign-in')}
+              >
+                <IonIcon slot="start" icon={logInOutline} />
+                Sign In
+              </IonButton>
+              <IonButton
+                style={s.signUpButton}
+                onClick={() => history.push('/sign-up')}
+              >
+                <IonIcon slot="start" icon={personAddOutline} />
+                Create Account
+              </IonButton>
+            </div>
 
-          {/* Feature cards */}
-          <div style={s.featureGrid}>
-            {[
-              {
-                title: 'Quick Registration',
-                desc: 'Register learners with guided multi-step forms',
-                icon: '📋'
-              },
-              {
-                title: 'Smart Filters',
-                desc: 'Search and filter by municipality and barangay',
-                icon: '🔍'
-              },
-              {
-                title: 'Analytics',
-                desc: 'View insights and breakdowns of learner data',
-                icon: '📊'
-              }
-            ].map((feature, idx) => (
-              <div key={idx} style={s.featureCard}>
-                <div style={s.featureIcon}>{feature.icon}</div>
-                <div style={s.featureTitle}>{feature.title}</div>
-                <div style={s.featureDesc}>{feature.desc}</div>
-              </div>
-            ))}
+            {/* Feature cards */}
+            <div className="landing-features" style={s.featureGrid}>
+              {[
+                {
+                  title: 'Quick Registration',
+                  desc: 'Register learners with guided multi-step forms',
+                  icon: '📋'
+                },
+                {
+                  title: 'Smart Filters',
+                  desc: 'Search and filter by municipality and barangay',
+                  icon: '🔍'
+                },
+                {
+                  title: 'Analytics',
+                  desc: 'View insights and breakdowns of learner data',
+                  icon: '📊'
+                }
+              ].map((feature, idx) => (
+                <div key={idx} style={s.featureCard}>
+                  <div style={s.featureIcon}>{feature.icon}</div>
+                  <div style={s.featureTitle}>{feature.title}</div>
+                  <div style={s.featureDesc}>{feature.desc}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </IonContent>
@@ -80,12 +130,11 @@ const LandingPage: React.FC = () => {
 const s: Record<string, React.CSSProperties> = {
   container: {
     position: 'relative',
-    background: 'linear-gradient(145deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%)',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: '100vh',
+    minHeight: '100%',
     padding: '20px',
     overflow: 'hidden'
   },
@@ -107,7 +156,7 @@ const s: Record<string, React.CSSProperties> = {
     position: 'relative',
     zIndex: 1,
     textAlign: 'center',
-    maxWidth: '540px',
+    maxWidth: '560px',
     animation: 'fadeSlideUp 0.6s ease both',
     display: 'flex',
     flexDirection: 'column',
@@ -158,23 +207,28 @@ const s: Record<string, React.CSSProperties> = {
   },
   buttonGroup: {
     display: 'flex',
-    gap: 12,
+    gap: 16,
     width: '100%',
+    maxWidth: 520,
     marginBottom: 40,
-    flexDirection: 'column'
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexWrap: 'wrap'
   },
   signInButton: {
-    '--background': 'rgba(255,255,255,0.15)',
-    '--background-hover': 'rgba(255,255,255,0.2)',
-    '--background-activated': 'rgba(255,255,255,0.25)',
+    '--background': '#1976d2',
+    '--background-hover': '#1565c0',
+    '--background-activated': '#0d47a1',
     '--border-radius': '50px',
-    '--border-width': '1.5px',
-    '--border-color': 'rgba(255,255,255,0.3)',
+    '--border-width': '0',
     '--color': '#fff',
-    '--box-shadow': '0 4px 16px rgba(0,0,0,0.15)',
+    '--box-shadow': '0 8px 24px rgba(13,71,161,0.28)',
     fontWeight: 700,
     fontSize: 15,
     height: 48,
+    minWidth: 170,
+    flex: '1 1 190px',
     backdropFilter: 'blur(10px)',
     transition: 'all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)'
   } as React.CSSProperties,
@@ -184,10 +238,14 @@ const s: Record<string, React.CSSProperties> = {
     '--background-activated': '#f1f5f9',
     '--border-radius': '50px',
     '--color': '#1565c0',
-    '--box-shadow': '0 8px 32px rgba(0,0,0,0.2)',
+    '--border-color': 'rgba(255,255,255,0.7)',
+    '--border-width': '1px',
+    '--box-shadow': '0 8px 24px rgba(0,0,0,0.12)',
     fontWeight: 700,
     fontSize: 15,
     height: 48,
+    minWidth: 170,
+    flex: '1 1 190px',
     transition: 'all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)'
   } as React.CSSProperties,
   featureGrid: {

@@ -48,6 +48,10 @@ const App: React.FC = () => {
       {!loading && (
         <IonReactRouter>
           <Switch>
+              <Route exact path="/">
+                <LandingPage />
+              </Route>
+
             {/* Auth routes */}
             <Route exact path="/landing" component={LandingPage} />
             <Route exact path="/sign-in" component={SignInPage} />
@@ -60,7 +64,7 @@ const App: React.FC = () => {
             <Route exact path="/analytics" component={AnalyticsPage} />
 
             {/* Default redirect */}
-            <Redirect to={isLoggedIn ? '/home' : '/landing'} />
+              <Redirect to="/landing" />
           </Switch>
         </IonReactRouter>
       )}
