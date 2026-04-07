@@ -3,11 +3,17 @@ import { IonButton, IonContent, IonIcon, IonPage } from '@ionic/react';
 import { logInOutline, personAddOutline, barChartOutline, documentOutline, filterOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import LogoImage from '../components/LogoImage';
+import { bypassLogin } from '../utils/auth';
 
 const LandingPage: React.FC = () => {
   const history = useHistory();
   const [activeFeature, setActiveFeature] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleBypassAccess = async () => {
+    await bypassLogin();
+    history.replace('/home');
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -151,6 +157,14 @@ const LandingPage: React.FC = () => {
           >
             <IonIcon slot="start" icon={personAddOutline} />
             Create Account
+          </IonButton>
+          <IonButton
+            expand="block"
+            fill="clear"
+            style={s.bypassButton}
+            onClick={handleBypassAccess}
+          >
+            Quick Demo Access (Bypass Login)
           </IonButton>
         </div>
 
@@ -322,6 +336,16 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 16,
     height: 50,
     transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+  } as React.CSSProperties,
+  bypassButton: {
+    '--color': '#334155',
+    '--background': 'transparent',
+    '--ripple-color': '#94a3b8',
+    height: 38,
+    fontSize: 12,
+    fontWeight: 700,
+    textTransform: 'none',
+    letterSpacing: 0.2,
   } as React.CSSProperties,
   featureSection: {
     padding: '32px 16px 24px',
