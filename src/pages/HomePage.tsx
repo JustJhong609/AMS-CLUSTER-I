@@ -29,6 +29,7 @@ import {
 import { useHistory } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { DISTRICT, DIVISION, REGION } from '../utils/constants';
+import LogoImage from '../components/LogoImage';
 
 const HomePage: React.FC = () => {
   const { learners } = useAppContext();
@@ -77,11 +78,49 @@ const HomePage: React.FC = () => {
 
   return (
     <IonPage>
+      <style>{`
+        @keyframes cardLoadSlideUp {
+          from {
+            opacity: 0;
+            transform: translateY(16px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes cardTapPulse {
+          0% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(0.98);
+          }
+          100% {
+            transform: scale(1);
+          }
+        }
+
+        .menu-card-hover {
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .menu-card-hover:active {
+          animation: cardTapPulse 200ms ease-out;
+        }
+
+        .menu-card-hover:hover,
+        .menu-card-hover:active {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important;
+        }
+      `}</style>
       <IonHeader style={{ boxShadow: 'none' }}>
         <div style={s.headerWrap}>
           <div style={s.headerTop}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={s.logoCircle}>ALS</div>
+              <LogoImage src="/logo.png" alt="ALS Logo" size={40} />
               <div>
                 <div style={s.headerTitle}>ALS Mapping System</div>
                 <div style={s.headerSub}>Community Mapping Tool</div>
@@ -119,7 +158,11 @@ const HomePage: React.FC = () => {
           <IonCard
             key={item.label}
             button
-            style={{ ...s.menuCard, animationDelay: `${idx * 0.07}s` }}
+            className="menu-card-hover"
+            style={{
+              ...s.menuCard,
+              animation: `cardLoadSlideUp 400ms cubic-bezier(0.22, 1, 0.36, 1) ${idx * 80}ms both`,
+            }}
             onClick={() => (item.path ? history.push(item.path) : setShowAbout(true))}
           >
             <IonCardContent style={{ padding: '14px 16px' }}>
@@ -177,6 +220,16 @@ const HomePage: React.FC = () => {
               </IonLabel>
             </IonItem>
           </IonList>
+
+          <IonText>
+            <h2 style={s.aboutHeading}>Credits & Acknowledgments</h2>
+            <p style={s.aboutParagraph}>
+              This project was made possible through the collaboration, commitment, and support of ALS implementers and partners working to advance inclusive education in Bukidnon Cluster I.
+            </p>
+            <p style={s.aboutParagraph}>
+              <strong>Alfredo G. De los Santos Jr., EPS II, Division of Bukidnon</strong>- for providing framework references, and implementation guidance that helped shape the structure and direction of this platform.
+            </p>
+          </IonText>
         </IonContent>
       </IonModal>
     </IonPage>
@@ -249,9 +302,10 @@ const s: Record<string, React.CSSProperties> = {
   menuCard: {
     margin: '0 16px 10px',
     borderRadius: 18,
-    animation: 'fadeSlideUp 0.3s ease both',
     border: '1px solid rgba(0,0,0,0.05)',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.06)'
+    boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
+    transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+    cursor: 'pointer'
   },
   menuRow: { display: 'flex', alignItems: 'center', gap: 14 },
   iconBox: {
@@ -277,7 +331,22 @@ const s: Record<string, React.CSSProperties> = {
     flexShrink: 0
   },
   aboutLabel: { fontSize: 11, fontWeight: 600, color: '#757575', textTransform: 'uppercase' },
-  aboutValue: { fontWeight: 700 }
+  aboutValue: { fontWeight: 700 },
+  aboutHeading: {
+    marginTop: 14,
+    marginBottom: 10,
+    fontSize: 20,
+    fontWeight: 800,
+    color: '#0F172A',
+    lineHeight: 1.2
+  },
+  aboutParagraph: {
+    marginTop: 0,
+    marginBottom: 12,
+    fontSize: 14,
+    lineHeight: 1.7,
+    color: '#334155'
+  }
 };
 
 export default HomePage;

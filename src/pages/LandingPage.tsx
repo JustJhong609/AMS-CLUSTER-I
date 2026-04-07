@@ -1,288 +1,414 @@
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { IonButton, IonContent, IonIcon, IonPage } from '@ionic/react';
-import { logInOutline, personAddOutline } from 'ionicons/icons';
+import { logInOutline, personAddOutline, barChartOutline, documentOutline, filterOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
+import LogoImage from '../components/LogoImage';
 
 const LandingPage: React.FC = () => {
   const history = useHistory();
+  const [activeFeature, setActiveFeature] = useState(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveFeature((prev) => (prev + 1) % 3);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const features = [
+    {
+      icon: documentOutline,
+      title: 'Quick Registration',
+      desc: 'Guided multi-step forms to register learners easily',
+      color: '#10B981'
+    },
+    {
+      icon: filterOutline,
+      title: 'Smart Filters',
+      desc: 'Search by municipality and barangay coverage',
+      color: '#F59E0B'
+    },
+    {
+      icon: barChartOutline,
+      title: 'Analytics',
+      desc: 'Learner insights and community breakdowns',
+      color: '#8B5CF6'
+    }
+  ];
+
+  const projectCards = [
+    {
+      title: 'What It Does',
+      desc: 'Registers and maps ALS learners across Cluster I communities.',
+    },
+    {
+      title: 'Who Uses It',
+      desc: 'Facilitators, mappers, and education teams in the field.',
+    },
+    {
+      title: 'Why It Matters',
+      desc: 'Improves targeting, planning, and learning support delivery.',
+    },
+  ];
 
   return (
     <IonPage>
-      <IonContent className="landing-page" style={{ '--background': 'linear-gradient(145deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%)' } as React.CSSProperties}>
+      <IonContent style={{ '--background': '#F9FAFB' } as React.CSSProperties}>
         <style>{`
-          .landing-page {
-            --padding-top: 22px;
-            --padding-bottom: 28px;
+          @keyframes heroFadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
           }
-          .landing-shell {
-            min-height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 8px 14px 0;
+          
+          @keyframes buttonTap {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.97); }
+            100% { transform: scale(1); }
           }
-          .landing-content {
-            width: 100%;
+
+          @keyframes featureSlideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
           }
-          .landing-buttons {
-            flex-direction: column;
-            max-width: 100%;
+
+          @keyframes floatGently {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
           }
-          .landing-buttons ion-button {
-            width: 100%;
+
+          .landing-hero {
+            animation: heroFadeUp 600ms cubic-bezier(0.22, 1, 0.36, 1);
           }
-          .landing-features {
-            grid-template-columns: 1fr;
-            margin-top: 28px;
+
+          .feature-card {
+            scroll-snap-align: center;
+            scroll-behavior: smooth;
           }
-          @media (min-width: 768px) {
-            .landing-page {
-              --padding-top: 32px;
-              --padding-bottom: 32px;
-            }
-            .landing-shell {
-              padding: 0 20px;
-            }
-            .landing-buttons {
-              flex-direction: row;
-              max-width: 520px;
-            }
-            .landing-buttons ion-button {
-              width: auto;
-            }
-            .landing-features {
-              grid-template-columns: repeat(3, minmax(140px, 1fr));
-              margin-top: 40px;
-            }
+
+          .feature-card:active {
+            animation: buttonTap 200ms ease-out;
+          }
+
+          ::-webkit-scrollbar {
+            height: 4px;
+          }
+          ::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          ::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 4px;
           }
         `}</style>
-        <div style={s.bgPattern} />
 
-        <div className="landing-shell">
-          <div className="landing-content" style={s.content}>
-            {/* Logo placeholder */}
-            <div style={s.logoPlaceholder}>
-              <div style={s.logoCircle}>ALS</div>
+        {/* Hero Section */}
+        <div style={s.heroSection} className="landing-hero">
+          <div style={s.heroBackground} />
+          <div style={s.heroContent}>
+            <div style={s.logoWrapper}>
+              <LogoImage src="/logo.png" alt="ALS Logo" size={72} />
             </div>
-
-            {/* Main heading */}
-            <h1 style={s.title}>ALS CLUSTER I<br />Mapping System</h1>
-
-            {/* Subtitle */}
-            <p style={s.subtitle}>Learner Registration & Community Mapping Platform</p>
-
-            {/* Description */}
-            <p style={s.description}>
-              A community-based registration platform for identifying and supporting out-of-school youth and adult learners across Bukidnon Cluster I municipalities.
-            </p>
-
-            {/* Buttons */}
-            <div className="landing-buttons" style={s.buttonGroup}>
-              <IonButton
-                style={s.signInButton}
-                onClick={() => history.push('/sign-in')}
-              >
-                <IonIcon slot="start" icon={logInOutline} />
-                Sign In
-              </IonButton>
-              <IonButton
-                style={s.signUpButton}
-                onClick={() => history.push('/sign-up')}
-              >
-                <IonIcon slot="start" icon={personAddOutline} />
-                Create Account
-              </IonButton>
-            </div>
-
-            {/* Feature cards */}
-            <div className="landing-features" style={s.featureGrid}>
-              {[
-                {
-                  title: 'Quick Registration',
-                  desc: 'Register learners with guided multi-step forms',
-                  icon: '📋'
-                },
-                {
-                  title: 'Smart Filters',
-                  desc: 'Search and filter by municipality and barangay',
-                  icon: '🔍'
-                },
-                {
-                  title: 'Analytics',
-                  desc: 'View insights and breakdowns of learner data',
-                  icon: '📊'
-                }
-              ].map((feature, idx) => (
-                <div key={idx} style={s.featureCard}>
-                  <div style={s.featureIcon}>{feature.icon}</div>
-                  <div style={s.featureTitle}>{feature.title}</div>
-                  <div style={s.featureDesc}>{feature.desc}</div>
-                </div>
-              ))}
-            </div>
+            <h1 style={s.heroTitle}>ALS Cluster I<br />Mapping System</h1>
+            <p style={s.heroSubtitle}>Learner Registration & Community Mapping Platform</p>
+            <p style={s.heroTagline}>EMPOWERING COMMUNITY LEARNING</p>
           </div>
         </div>
+
+        {/* Stats Section */}
+        <div style={s.statsSection}>
+          <div style={s.statCard}>
+            <div style={s.statValue}>1.2K+</div>
+            <div style={s.statLabel}>Learners</div>
+          </div>
+          <div style={s.statDivider} />
+          <div style={s.statCard}>
+            <div style={s.statValue}>4</div>
+            <div style={s.statLabel}>Municipalities</div>
+          </div>
+          <div style={s.statDivider} />
+          <div style={s.statCard}>
+            <div style={s.statValue}>100%</div>
+            <div style={s.statLabel}>Coverage</div>
+          </div>
+        </div>
+
+        {/* Primary Actions */}
+        <div style={s.actionsSection}>
+          <IonButton
+            expand="block"
+            style={s.primaryButton}
+            onClick={() => history.push('/sign-in')}
+          >
+            <IonIcon slot="start" icon={logInOutline} />
+            Sign In
+          </IonButton>
+          <IonButton
+            expand="block"
+            fill="outline"
+            style={s.secondaryButton}
+            onClick={() => history.push('/sign-up')}
+          >
+            <IonIcon slot="start" icon={personAddOutline} />
+            Create Account
+          </IonButton>
+        </div>
+
+        {/* Feature Section */}
+        <div style={s.featureSection}>
+          <div style={s.projectCardsWrap}>
+            {projectCards.map((card, idx) => (
+              <div
+                key={card.title}
+                style={{
+                  ...s.projectCard,
+                  animation: `featureSlideIn 450ms cubic-bezier(0.22, 1, 0.36, 1) ${idx * 90}ms both`,
+                }}
+              >
+                <h3 style={s.projectCardTitle}>{card.title}</h3>
+                <p style={s.projectCardDesc}>{card.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div style={s.featureScroller} ref={scrollContainerRef}>
+            {features.map((feature, idx) => (
+              <div
+                key={idx}
+                className="feature-card"
+                style={{
+                  ...s.featureCard,
+                  animation: `featureSlideIn 500ms cubic-bezier(0.22, 1, 0.36, 1) ${idx * 100}ms both`,
+                  borderLeft: `4px solid ${feature.color}`,
+                  opacity: activeFeature === idx ? 1 : 0.5,
+                  transform: activeFeature === idx ? 'scale(1)' : 'scale(0.95)',
+                }}
+                onClick={() => setActiveFeature(idx)}
+              >
+                <div style={{ ...s.featureIconBox, background: `${feature.color}18` }}>
+                  <IonIcon icon={feature.icon} style={{ ...s.featureIcon, color: feature.color }} />
+                </div>
+                <h3 style={s.featureTitle}>{feature.title}</h3>
+                <p style={s.featureDesc}>{feature.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div style={s.featureIndicators}>
+            {features.map((_, idx) => (
+              <div
+                key={idx}
+                style={{
+                  ...s.indicator,
+                  background: activeFeature === idx ? '#1F66BC' : '#E2E8F0',
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom Spacer */}
+        <div style={{ height: 32 }} />
       </IonContent>
     </IonPage>
   );
 };
 
 const s: Record<string, React.CSSProperties> = {
-  container: {
+  heroSection: {
+    background: 'linear-gradient(135deg, #1F66BC 0%, #0D47A1 50%, #4C1D95 100%)',
+    padding: '48px 16px 32px',
     position: 'relative',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '100%',
-    padding: '20px',
-    overflow: 'hidden'
+    overflow: 'hidden',
   },
-  bgPattern: {
+  heroBackground: {
     position: 'absolute',
     inset: 0,
     backgroundImage: `
-      linear-gradient(45deg, rgba(255,255,255,0.02) 25%, transparent 25%),
-      linear-gradient(-45deg, rgba(255,255,255,0.02) 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.02) 75%),
-      linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.02) 75%)
+      radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(255,255,255,0.06) 0%, transparent 50%)
     `,
-    backgroundSize: '40px 40px',
-    backgroundPosition: '0 0, 0 20px, 20px -20px, -20px 0px',
     zIndex: 0,
-    opacity: 0.1
   },
-  content: {
+  heroContent: {
     position: 'relative',
     zIndex: 1,
-    textAlign: 'center',
-    maxWidth: '560px',
-    animation: 'fadeSlideUp 0.6s ease both',
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center'
-  },
-  logoPlaceholder: {
-    marginBottom: '32px',
-    animation: 'float 3s ease-in-out infinite'
-  },
-  logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    background: 'rgba(255,255,255,0.15)',
-    border: '2px solid rgba(255,255,255,0.3)',
-    display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center',
-    color: '#fff',
-    fontWeight: 900,
-    fontSize: 24,
-    backdropFilter: 'blur(10px)',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.15)'
-  },
-  title: {
-    color: '#fff',
-    fontSize: 'clamp(28px, 5vw, 42px)',
-    fontWeight: 900,
-    margin: '0 0 16px',
-    lineHeight: 1.15,
-    letterSpacing: -0.5
-  },
-  subtitle: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 16,
-    fontWeight: 700,
-    margin: '0 0 24px',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase'
-  },
-  description: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 15,
-    fontWeight: 500,
-    margin: '0 0 40px',
-    lineHeight: 1.6,
-    maxWidth: '480px'
-  },
-  buttonGroup: {
-    display: 'flex',
-    gap: 16,
-    width: '100%',
-    maxWidth: 520,
-    marginBottom: 40,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexWrap: 'wrap'
-  },
-  signInButton: {
-    '--background': '#1976d2',
-    '--background-hover': '#1565c0',
-    '--background-activated': '#0d47a1',
-    '--border-radius': '50px',
-    '--border-width': '0',
-    '--color': '#fff',
-    '--box-shadow': '0 8px 24px rgba(13,71,161,0.28)',
-    fontWeight: 700,
-    fontSize: 15,
-    height: 48,
-    minWidth: 170,
-    flex: '1 1 190px',
-    backdropFilter: 'blur(10px)',
-    transition: 'all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)'
-  } as React.CSSProperties,
-  signUpButton: {
-    '--background': '#fff',
-    '--background-hover': '#f8fafc',
-    '--background-activated': '#f1f5f9',
-    '--border-radius': '50px',
-    '--color': '#1565c0',
-    '--border-color': 'rgba(255,255,255,0.7)',
-    '--border-width': '1px',
-    '--box-shadow': '0 8px 24px rgba(0,0,0,0.12)',
-    fontWeight: 700,
-    fontSize: 15,
-    height: 48,
-    minWidth: 170,
-    flex: '1 1 190px',
-    transition: 'all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)'
-  } as React.CSSProperties,
-  featureGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-    gap: 16,
-    width: '100%',
-    marginTop: 40
-  },
-  featureCard: {
-    background: '#fff',
-    borderRadius: 18,
-    padding: '20px 16px',
     textAlign: 'center',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-    border: '1px solid rgba(255,255,255,0.5)',
-    animation: 'fadeSlideUp 0.6s ease both',
-    transition: 'all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)',
-    cursor: 'pointer'
   },
-  featureIcon: {
-    fontSize: 32,
-    marginBottom: 8
+  logoWrapper: {
+    marginBottom: 20,
+    animation: 'floatGently 4s ease-in-out infinite',
   },
-  featureTitle: {
-    color: '#1e293b',
+  heroTitle: {
+    color: '#FFF',
+    fontSize: 'clamp(28px, 6vw, 40px)',
+    fontWeight: 900,
+    margin: '0 0 6px',
+    lineHeight: 1.1,
+    letterSpacing: -0.5,
+  },
+  heroSubtitle: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 14,
+    fontWeight: 700,
+    margin: '0 0 10px',
+    letterSpacing: 0.5,
+  },
+  heroTagline: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 16,
+    fontWeight: 600,
+    margin: 0,
+    letterSpacing: 0.3,
+  },
+
+  statsSection: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    padding: '24px 0',
+    background: '#FFF',
+    borderBottom: '1px solid #E2E8F0',
+  },
+  statCard: {
+    textAlign: 'center',
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 22,
+    fontWeight: 900,
+    color: '#1F66BC',
+    lineHeight: 1,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: 700,
+    marginTop: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statDivider: {
+    width: 1,
+    height: 32,
+    background: '#E2E8F0',
+  },
+
+  actionsSection: {
+    padding: '24px 16px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+  },
+  primaryButton: {
+    '--background': 'linear-gradient(135deg, #1F66BC 0%, #0D47A1 100%)',
+    '--box-shadow': '0 8px 20px rgba(31, 102, 188, 0.3)',
+    '--border-radius': '14px',
+    '--color': '#FFF',
+    fontWeight: 800,
+    fontSize: 16,
+    height: 50,
+    transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+  } as React.CSSProperties,
+  secondaryButton: {
+    '--background': '#FFF',
+    '--border-color': '#CBD5E1',
+    '--border-width': '1.5px',
+    '--border-radius': '14px',
+    '--color': '#1F66BC',
+    fontWeight: 800,
+    fontSize: 16,
+    height: 50,
+    transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+  } as React.CSSProperties,
+  featureSection: {
+    padding: '32px 16px 24px',
+  },
+  projectCardsWrap: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gap: 10,
+    marginBottom: 16,
+  },
+  projectCard: {
+    background: '#fff',
+    borderRadius: 14,
+    border: '1px solid #E2E8F0',
+    boxShadow: '0 3px 10px rgba(15, 23, 42, 0.06)',
+    padding: '12px 10px',
+    minHeight: 96,
+  },
+  projectCardTitle: {
+    margin: 0,
     fontSize: 13,
     fontWeight: 800,
-    marginBottom: 4,
-    letterSpacing: 0.3
+    color: '#0F172A',
+    lineHeight: 1.2,
   },
-  featureDesc: {
-    color: '#64748b',
+  projectCardDesc: {
+    margin: '8px 0 0',
     fontSize: 11,
     fontWeight: 500,
-    lineHeight: 1.4
-  }
+    lineHeight: 1.35,
+    color: '#64748B',
+  },
+  featureScroller: {
+    display: 'flex',
+    gap: 14,
+    overflowX: 'auto',
+    scrollSnapType: 'x mandatory',
+    paddingBottom: 8,
+    marginBottom: 16,
+  },
+  featureCard: {
+    flex: '0 0 calc(100% - 32px)',
+    maxWidth: 320,
+    background: '#FFF',
+    borderRadius: '16px',
+    padding: '20px 16px',
+    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.08)',
+    border: '1px solid #E2E8F0',
+    transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+  },
+  featureIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  featureIcon: {
+    fontSize: 24,
+  },
+  featureTitle: {
+    fontSize: 16,
+    fontWeight: 800,
+    color: '#0F172A',
+    margin: '0 0 8px',
+  },
+  featureDesc: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: 500,
+    margin: 0,
+    lineHeight: 1.5,
+  },
+
+  featureIndicators: {
+    display: 'flex',
+    gap: 6,
+    justifyContent: 'center',
+  },
+  indicator: {
+    width: 8,
+    height: 8,
+    borderRadius: '50%',
+    transition: 'all 0.3s ease',
+  },
 };
 
 export default LandingPage;

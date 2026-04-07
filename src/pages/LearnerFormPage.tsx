@@ -24,7 +24,7 @@ import LogisticsSection from '../components/form/LogisticsSection';
 import PersonalInfoSection from '../components/form/PersonalInfoSection';
 import { Learner, LearnerFormData } from '../types';
 import { calculateAge, createEmptyFormData, generateId } from '../utils/helpers';
-import { createLearner, fetchLearners } from '../utils/learnerApi';
+import { createLearner } from '../utils/learnerApi';
 import { validateSection } from '../utils/validation';
 
 const TOTAL_STEPS = 5;
@@ -91,6 +91,7 @@ const LearnerFormPage: React.FC = () => {
       formData.barangay === OTHER_OPTION && formData.barangayOther.trim()
         ? formData.barangayOther.trim()
         : formData.barangay;
+    const resolvedMunicipality = formData.municipality as Learner['municipality'];
 
     const learner: Learner = {
       id: generateId(),
@@ -116,6 +117,8 @@ const LearnerFormPage: React.FC = () => {
       isPwd: formData.isPwd === 'Yes',
       pwdType: formData.pwdType || undefined,
       pwdTypeOther: formData.pwdTypeOther.trim() || undefined,
+      municipality: resolvedMunicipality,
+      learnerDistrict: formData.learnerDistrict,
       barangay: resolvedBarangay,
       completeAddress: formData.completeAddress.trim(),
       roleInFamily: formData.roleInFamily,
@@ -143,8 +146,7 @@ const LearnerFormPage: React.FC = () => {
 
     try {
       await createLearner(learner);
-      const latest = await fetchLearners();
-      setLearners(latest);
+      setLearners((prev) => [learner, ...prev]);
       setShowSaveAlert(false);
       history.replace('/learners');
     } catch (error: any) {

@@ -27,6 +27,8 @@ export const createEmptyFormData = (): LearnerFormData => ({
   pwdType: '',
   pwdTypeOther: '',
 
+  municipality: '',
+  learnerDistrict: '',
   barangay: '',
   barangayOther: '',
   completeAddress: '',

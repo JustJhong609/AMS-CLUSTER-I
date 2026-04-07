@@ -5,6 +5,12 @@ export interface ClusterCoverage {
   barangays: string[];
 }
 
+export interface DistrictCoverage {
+  municipality: MunicipalityKey;
+  district: string;
+  barangays: string[];
+}
+
 export interface Learner {
   id: string;
   createdBy?: string;
@@ -34,6 +40,8 @@ export interface Learner {
   pwdType?: string;
   pwdTypeOther?: string;
 
+  municipality: MunicipalityKey;
+  learnerDistrict: string;
   barangay: string;
   completeAddress: string;
 
@@ -89,6 +97,8 @@ export interface LearnerFormData {
   pwdType: string;
   pwdTypeOther: string;
 
+  municipality: MunicipalityKey | '';
+  learnerDistrict: string;
   barangay: string;
   barangayOther: string;
   completeAddress: string;

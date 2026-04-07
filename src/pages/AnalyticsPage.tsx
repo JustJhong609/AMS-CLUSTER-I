@@ -26,13 +26,14 @@ import { useAppContext } from '../context/AppContext';
 import { clusterCoverage } from '../data/clusterCoverage';
 import { BARANGAY_OPTIONS } from '../utils/constants';
 import { formatDate } from '../utils/helpers';
+import { getDistrictByBarangay, getDistrictOptions, getMunicipalityByBarangay } from '../utils/locationMapping';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 type ChartDatum = { label: string; value: number; color: string };
-type SectionKey = 'municipality' | 'barangay' | 'overallElementary' | 'overallJhs' | 'overallBlp';
+type SectionKey = 'municipality' | 'district' | 'barangay' | 'overallElementary' | 'overallJhs' | 'overallBlp';
 
-type DownloadScope = 'overall' | 'municipality' | 'barangay';
+type DownloadScope = 'overall' | 'municipality' | 'district' | 'barangay';
 
 type ReportRow = {
   firstName: string;
@@ -137,6 +138,7 @@ const AnalyticsPage: React.FC = () => {
   const [downloadScope, setDownloadScope] = useState<DownloadScope>('overall');
 
   const municipalityOptions = clusterCoverage.map((item) => item.municipality);
+  const districtOptions = getDistrictOptions();
   const allBarangays = clusterCoverage.flatMap((item) => item.barangays);
 
   const barangayToMunicipality = clusterCoverage.reduce<Record<string, string>>((acc, item) => {
@@ -287,7 +289,8 @@ const AnalyticsPage: React.FC = () => {
     Malitbog: '#7c3aed',
   };
 
-  const getLearnerMunicipality = (learner: { barangay: string }) => barangayToMunicipality[learner.barangay] ?? 'Unknown';
+  const getLearnerMunicipality = (learner: { barangay: string; municipality?: string }) => learner.municipality || barangayToMunicipality[learner.barangay] || getMunicipalityByBarangay(learner.barangay) || 'Unknown';
+  const getLearnerDistrict = (learner: { barangay: string; municipality?: string; learnerDistrict?: string }) => learner.learnerDistrict || getDistrictByBarangay(learner.barangay, getLearnerMunicipality(learner) as any) || 'Unknown';
 
   const overallByMunicipality = (predicate: (learner: typeof learners[number]) => boolean = () => true) => {
     const counts: Record<string, number> = {};
@@ -306,6 +309,16 @@ const AnalyticsPage: React.FC = () => {
       counts[learner.barangay] = (counts[learner.barangay] || 0) + 1;
     });
     return allBarangays.map((barangay) => [barangay, counts[barangay] || 0] as [string, number]);
+  };
+
+  const overallByDistrict = (predicate: (learner: typeof learners[number]) => boolean = () => true) => {
+    const counts: Record<string, number> = {};
+    learners.forEach((learner) => {
+      if (!predicate(learner)) return;
+      const district = getLearnerDistrict(learner);
+      counts[district] = (counts[district] || 0) + 1;
+    });
+    return districtOptions.map((district) => [district, counts[district] || 0] as [string, number]);
   };
 
   const isElementaryLearner = (learner: typeof learners[number]) => learner.lastGradeCompleted === 'G1 – G6 (Elementary)' && !learner.isBlp;
@@ -329,6 +342,10 @@ const AnalyticsPage: React.FC = () => {
     municipality: {
       title: 'Learners by Municipality',
       data: toChart(overallByMunicipality(), Object.values(colorByMunicipality)),
+    },
+    district: {
+      title: 'Learners by District',
+      data: toChart(overallByDistrict(), colorSets.purple),
     },
     barangay: {
       title: 'Learners by Barangay',
@@ -472,6 +489,50 @@ const AnalyticsPage: React.FC = () => {
         y = (doc as any).lastAutoTable.finalY + 8;
       });
       doc.save('als-learners-by-barangay.pdf');
+      return;
+    }
+
+    if (scope === 'district') {
+      addHeader();
+      const grouped: Record<string, ReportRow[]> = {};
+      rows.forEach((row) => {
+        const municipality = barangayToMunicipality[row.barangay] ?? getMunicipalityByBarangay(row.barangay) ?? '';
+        const district = getDistrictByBarangay(row.barangay, municipality as any) ?? 'Unknown';
+        if (!grouped[district]) grouped[district] = [];
+        grouped[district].push(row);
+      });
+
+      let y = 28;
+      districtOptions.forEach((district) => {
+        const list = grouped[district] ?? [];
+        if (y > 170) {
+          doc.addPage();
+          y = 14;
+        }
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${district} (${list.length} learners)`, 14, y);
+        y += 3;
+        const districtRows = Object.entries(
+          list.reduce<Record<string, { municipality: string; count: number }>>((acc, row) => {
+            const municipality = barangayToMunicipality[row.barangay] ?? getMunicipalityByBarangay(row.barangay) ?? 'Unknown';
+            const key = row.barangay;
+            if (!acc[key]) acc[key] = { municipality, count: 0 };
+            acc[key].count += 1;
+            return acc;
+          }, {}),
+        ).map(([barangay, value]) => [barangay, value.municipality, value.count]);
+        autoTable(doc, {
+          startY: y,
+          head: [['Barangay', 'Municipality', 'Learners']],
+          body: districtRows,
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [76, 29, 149] },
+          margin: { top: 28 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 8;
+      });
+      doc.save('als-learners-by-district.pdf');
       return;
     }
 
@@ -641,6 +702,7 @@ const AnalyticsPage: React.FC = () => {
               >
                 <IonSelectOption value="overall">Overall</IonSelectOption>
                 <IonSelectOption value="municipality">Municipality</IonSelectOption>
+                <IonSelectOption value="district">District</IonSelectOption>
                 <IonSelectOption value="barangay">Barangay</IonSelectOption>
               </IonSelect>
             </IonItem>
@@ -664,6 +726,7 @@ const AnalyticsPage: React.FC = () => {
                 onIonChange={(e) => setActiveSection(e.detail.value as SectionKey)}
               >
                 <IonSelectOption value="municipality">By Municipality</IonSelectOption>
+                <IonSelectOption value="district">By District</IonSelectOption>
                 <IonSelectOption value="barangay">By Barangay</IonSelectOption>
                 <IonSelectOption value="overallElementary">Overall Elementary</IonSelectOption>
                 <IonSelectOption value="overallJhs">Overall JHS</IonSelectOption>

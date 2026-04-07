@@ -1,4 +1,5 @@
 import { Learner } from '../types';
+import { buildMockLearners } from '../data/mockLearners';
 
 const STORAGE_KEY = 'als-cluster-i-learners';
 
@@ -31,4 +32,13 @@ export const updateLearner = async (learner: Learner): Promise<void> => {
 export const deleteLearner = async (id: string): Promise<void> => {
   const list = await fetchLearners();
   saveLearners(list.filter((item) => item.id !== id));
+};
+
+export const seedMockLearnersIfEmpty = async (): Promise<Learner[]> => {
+  const existing = await fetchLearners();
+  if (existing.length > 0) return existing;
+
+  const mockLearners = buildMockLearners();
+  saveLearners(mockLearners);
+  return mockLearners;
 };

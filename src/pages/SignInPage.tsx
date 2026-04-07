@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import { IonButton, IonCard, IonCardContent, IonContent, IonIcon, IonPage } from '@ionic/react';
 import { arrowBackOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
+import { useAppContext } from '../context/AppContext';
+import { seedMockLearnersIfEmpty } from '../utils/learnerApi';
 
 const SignInPage: React.FC = () => {
   const history = useHistory();
+  const { setLearners } = useAppContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -20,17 +23,21 @@ const SignInPage: React.FC = () => {
     }
 
     setIsLoading(true);
-    // Simulate async login - in real app, call backend
-    setTimeout(() => {
+    try {
       localStorage.setItem('als-user', JSON.stringify({ email, role: 'mapper' }));
+      const seededLearners = await seedMockLearnersIfEmpty();
+      setLearners(seededLearners);
       history.replace('/home');
+    } catch {
+      setError('Unable to sign in right now. Please try again.');
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
   };
 
   return (
     <IonPage>
-      <IonContent className="auth-page" style={{ '--background': 'linear-gradient(145deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%)' } as React.CSSProperties}>
+      <IonContent className="auth-page" style={{ '--background': "linear-gradient(145deg, rgba(13,71,161,0.84) 0%, rgba(21,101,192,0.8) 50%, rgba(25,118,210,0.8) 100%), url('/background.png') center / cover no-repeat" } as React.CSSProperties}>
         <style>{`
           .auth-page {
             --padding-top: 18px;
