@@ -43,6 +43,8 @@ export const validateEducation = (d: LearnerFormData): ValidationResult => {
 
 export const validateAddress = (d: LearnerFormData): ValidationResult => {
   const e: Record<string, string> = {};
+  if (!d.municipality) e.municipality = 'Municipality is required';
+  if (!d.learnerDistrict) e.learnerDistrict = 'District is required';
   if (!d.barangay) e.barangay = 'Barangay is required';
   if (!d.completeAddress.trim()) e.completeAddress = 'Complete address is required';
   return result(e);

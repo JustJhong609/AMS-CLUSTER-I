@@ -62,16 +62,16 @@ const EducationSection: React.FC<Props> = ({ data, errors, onChange }) => (
             )}
           </>
         )}
-
-        <RadioGroup
-          label="Interested in ALS A&E? *"
-          options={YES_NO_OPTIONS as unknown as string[]}
-          value={data.interestedInALS}
-          onChange={(v) => onChange('interestedInALS', v)}
-          error={errors.interestedInALS}
-        />
       </>
     )}
+
+    <RadioGroup
+      label="Interested in ALS A&E? *"
+      options={YES_NO_OPTIONS as unknown as string[]}
+      value={data.interestedInALS}
+      onChange={(v) => onChange('interestedInALS', v)}
+      error={errors.interestedInALS}
+    />
 
     <FormInput label="Contact Number" value={data.contactNumber} onChange={(v) => onChange('contactNumber', v)} type="tel" inputmode="tel" />
   </div>

@@ -11,7 +11,7 @@ import LearnerListPage from './pages/LearnerListPage';
 import LearnerFormPage from './pages/LearnerFormPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import { Learner } from './types';
-import { fetchLearners } from './utils/learnerApi';
+import { seedMockLearnersIfEmpty } from './utils/learnerApi';
 
 setupIonicReact({ mode: 'md' });
 
@@ -27,7 +27,7 @@ const App: React.FC = () => {
       const user = localStorage.getItem('als-user');
       if (user) {
         setIsLoggedIn(true);
-        const data = await fetchLearners();
+        const data = await seedMockLearnersIfEmpty();
         if (mounted) {
           setLearners(data);
         }
