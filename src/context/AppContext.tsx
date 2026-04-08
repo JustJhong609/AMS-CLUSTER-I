@@ -6,7 +6,6 @@ interface AppContextValue {
   setLearners: React.Dispatch<React.SetStateAction<Learner[]>>;
   currentUserName: string;
   currentUserId: string;
-  currentUserRole: string;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);

@@ -1,5 +1,4 @@
 export type MunicipalityKey = 'Libona' | 'Manolo Fortich' | 'Baungon' | 'Malitbog';
-export type UserRole = 'mapper' | 'admin' | 'superadmin';
 
 export interface ClusterCoverage {
   municipality: MunicipalityKey;

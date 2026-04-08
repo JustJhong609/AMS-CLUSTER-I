@@ -135,7 +135,7 @@ create table if not exists public.app_profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email citext unique,
   full_name text,
-  role text not null default 'mapper' check (role in ('mapper', 'admin', 'superadmin')),
+  role text not null default 'mapper' check (role in ('mapper', 'admin')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -152,7 +152,7 @@ do $$ begin
 
   alter table public.app_profiles
     add constraint app_profiles_role_check
-    check (role in ('mapper', 'admin', 'superadmin'));
+    check (role in ('mapper', 'admin'));
 end $$;
 
 -- ---------- LEARNERS TABLE (ALIGNED WITH FRONTEND PAYLOAD) ----------
@@ -389,33 +389,7 @@ create policy profiles_update_own
   with check (id = auth.uid());
 
 drop policy if exists profiles_select_superadmin on public.app_profiles;
-create policy profiles_select_superadmin
-  on public.app_profiles
-  for select
-  to authenticated
-  using (
-    exists (
-      select 1
-      from public.app_profiles me
-      where me.id = auth.uid()
-        and me.role = 'superadmin'
-    )
-  );
-
 drop policy if exists profiles_update_superadmin on public.app_profiles;
-create policy profiles_update_superadmin
-  on public.app_profiles
-  for update
-  to authenticated
-  using (
-    exists (
-      select 1
-      from public.app_profiles me
-      where me.id = auth.uid()
-        and me.role = 'superadmin'
-    )
-  )
-  with check (true);
 
 drop policy if exists learners_select_auth on public.learners;
 create policy learners_select_auth

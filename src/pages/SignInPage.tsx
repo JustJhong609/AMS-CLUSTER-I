@@ -35,22 +35,7 @@ const SignInPage: React.FC = () => {
         throw signInError;
       }
 
-      const userId = signInData.user?.id;
-      let nextPath = '/home';
-
-      if (userId) {
-        const { data: profile } = await supabase
-          .from('app_profiles')
-          .select('role')
-          .eq('id', userId)
-          .maybeSingle();
-
-        if (profile?.role === 'superadmin') {
-          nextPath = '/superadmin';
-        }
-      }
-
-      history.replace(nextPath);
+      history.replace('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to sign in right now. Please try again.');
     } finally {
