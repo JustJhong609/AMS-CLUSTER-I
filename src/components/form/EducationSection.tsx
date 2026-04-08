@@ -22,6 +22,10 @@ const EducationSection: React.FC<Props> = ({ data, errors, onChange }) => (
 
     {data.isBlp === 'No' && (
       <>
+        <IonText className="education-helper-text">
+          <p>Last school attended or current school attended</p>
+        </IonText>
+
         <FormInput label="Name of School / Course / Degree" value={data.schoolName} onChange={(v) => onChange('schoolName', v)} />
 
         <RadioGroup

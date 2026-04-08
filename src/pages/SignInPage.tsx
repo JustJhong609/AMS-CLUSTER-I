@@ -2,12 +2,10 @@ import React, { useState } from 'react';
 import { IonButton, IonCard, IonCardContent, IonContent, IonIcon, IonPage } from '@ionic/react';
 import { arrowBackOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
-import { useAppContext } from '../context/AppContext';
-import { seedMockLearnersIfEmpty } from '../utils/learnerApi';
+import { supabase } from '../utils/supabase.ts';
 
 const SignInPage: React.FC = () => {
   const history = useHistory();
-  const { setLearners } = useAppContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -24,12 +22,22 @@ const SignInPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      localStorage.setItem('als-user', JSON.stringify({ email, role: 'mapper' }));
-      const seededLearners = await seedMockLearnersIfEmpty();
-      setLearners(seededLearners);
+      if (!supabase) {
+        throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY or SUPABASE_URL/SUPABASE_ANON_KEY to your environment.');
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (signInError) {
+        throw signInError;
+      }
+
       history.replace('/home');
-    } catch {
-      setError('Unable to sign in right now. Please try again.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to sign in right now. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -37,7 +45,7 @@ const SignInPage: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent className="auth-page" style={{ '--background': "linear-gradient(145deg, rgba(13,71,161,0.84) 0%, rgba(21,101,192,0.8) 50%, rgba(25,118,210,0.8) 100%), url('/background.png') center / cover no-repeat" } as React.CSSProperties}>
+      <IonContent className="auth-page" style={{ '--background': 'linear-gradient(145deg, #081a3a 0%, #0f3b7a 34%, #1458a8 66%, #0a214f 100%)' } as React.CSSProperties}>
         <style>{`
           .auth-page {
             --padding-top: 18px;
@@ -176,13 +184,13 @@ const s: Record<string, React.CSSProperties> = {
     position: 'absolute',
     inset: 0,
     backgroundImage: `
-      linear-gradient(45deg, rgba(255,255,255,0.02) 25%, transparent 25%),
-      linear-gradient(-45deg, rgba(255,255,255,0.02) 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.02) 75%),
-      linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.02) 75%)
+      radial-gradient(circle at 18% 18%, rgba(255,255,255,0.12) 0%, transparent 30%),
+      radial-gradient(circle at 80% 16%, rgba(96,165,250,0.16) 0%, transparent 24%),
+      radial-gradient(circle at 72% 82%, rgba(37,99,235,0.14) 0%, transparent 28%),
+      radial-gradient(circle at 20% 80%, rgba(14,165,233,0.10) 0%, transparent 26%)
     `,
-    backgroundSize: '40px 40px',
-    opacity: 0.1,
+    backgroundSize: 'auto',
+    opacity: 1,
     zIndex: 0
   },
   topBar: {
@@ -273,8 +281,8 @@ const s: Record<string, React.CSSProperties> = {
     outline: 'none'
   },
   submitBtn: {
-    '--background': 'linear-gradient(135deg, #1976d2 0%, #1565C0 60%, #0d47a1 100%)',
-    '--box-shadow': '0 6px 20px rgba(21,101,192,0.38)',
+    '--background': 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 52%, #1d4ed8 100%)',
+    '--box-shadow': '0 10px 22px rgba(37,99,235,0.34)',
     '--border-radius': '50px',
     '--color': '#fff',
     fontWeight: 700,
@@ -298,10 +306,10 @@ const s: Record<string, React.CSSProperties> = {
   },
   createBtn: {
     '--border-radius': '50px',
-    '--border-color': '#e2e8f0',
+    '--border-color': '#93c5fd',
     '--border-width': '1.5px',
-    '--color': '#1565c0',
-    '--background': '#f8fafc',
+    '--color': '#1d4ed8',
+    '--background': 'rgba(255,255,255,0.92)',
     fontWeight: 700,
     fontSize: 14,
     height: 46

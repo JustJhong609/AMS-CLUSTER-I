@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  IonAlert,
   IonBackButton,
   IonButton,
   IonButtons,
@@ -21,18 +22,18 @@ import {
   IonModal,
   IonTitle,
 } from '@ionic/react';
-import { add, filterOutline, personOutline, folderOpenOutline, personCircleOutline, schoolOutline, homeOutline, peopleOutline, busOutline } from 'ionicons/icons';
+import { add, createOutline, filterOutline, personOutline, folderOpenOutline, personCircleOutline, schoolOutline, homeOutline, peopleOutline, busOutline, trashOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { clusterCoverage } from '../data/clusterCoverage';
 import { DISTRICT } from '../utils/constants';
-import { seedMockLearnersIfEmpty } from '../utils/learnerApi';
+import { deleteLearner, fetchLearners } from '../utils/learnerApi';
 import { Learner } from '../types';
 import { formatDate } from '../utils/helpers';
-import { getDistrictByBarangay, getDistrictOptions, getMunicipalityByBarangay } from '../utils/locationMapping';
+import { formatDistrictLabel, getDistrictByBarangay, getDistrictOptions, getMunicipalityByBarangay } from '../utils/locationMapping';
 
 const LearnerListPage: React.FC = () => {
-  const { learners, setLearners } = useAppContext();
+  const { learners, setLearners, currentUserId } = useAppContext();
   const history = useHistory();
   const [query, setQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -40,17 +41,20 @@ const LearnerListPage: React.FC = () => {
   const [filterDistrict, setFilterDistrict] = useState('');
   const [filterBarangay, setFilterBarangay] = useState('');
   const [selectedLearner, setSelectedLearner] = useState<Learner | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Learner | null>(null);
+  const [deleteError, setDeleteError] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (learners.length > 0) return;
 
     let mounted = true;
-    const ensureSeedData = async () => {
-      const seeded = await seedMockLearnersIfEmpty();
-      if (mounted) setLearners(seeded);
+    const loadLearners = async () => {
+      const existing = await fetchLearners();
+      if (mounted) setLearners(existing);
     };
 
-    void ensureSeedData();
+    void loadLearners();
     return () => {
       mounted = false;
     };
@@ -88,6 +92,21 @@ const LearnerListPage: React.FC = () => {
   });
 
   const initials = (first: string, last: string) => `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
+
+  const handleDelete = async (target: Learner) => {
+    if (isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await deleteLearner(target.id);
+      setLearners((prev) => prev.filter((item) => item.id !== target.id));
+      setSelectedLearner(null);
+      setDeleteTarget(null);
+    } catch (error: any) {
+      setDeleteError(error?.message || 'Unable to delete learner right now.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const detailCategories = selectedLearner
     ? [
@@ -140,7 +159,7 @@ const LearnerListPage: React.FC = () => {
         icon: homeOutline,
         rows: [
           ['Municipality', selectedLearner.municipality || barangayToMunicipality[selectedLearner.barangay] || 'N/A'],
-          ['District', selectedLearner.learnerDistrict || getDistrictByBarangay(selectedLearner.barangay, selectedLearner.municipality) || 'N/A'],
+          ['District', formatDistrictLabel(selectedLearner.learnerDistrict || getDistrictByBarangay(selectedLearner.barangay, selectedLearner.municipality) || 'N/A')],
           ['Barangay', selectedLearner.barangay],
           ['Complete Address', selectedLearner.completeAddress],
         ],
@@ -330,13 +349,39 @@ const LearnerListPage: React.FC = () => {
           filtered.map((learner) => (
             <IonCard key={learner.id} button onClick={() => setSelectedLearner(learner)} style={{ margin: '6px 16px', borderRadius: 14 }}>
               <IonCardContent>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={styles.cardRow}>
                   <div style={styles.avatar}>{initials(learner.firstName, learner.lastName)}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={styles.name}>{learner.lastName}, {learner.firstName} {learner.middleName}</div>
                     <div style={styles.meta}>Age: {learner.age} | {learner.sex}</div>
                     <div style={styles.meta}>Mapped by: {learner.mappedBy}</div>
                   </div>
+                  {currentUserId && learner.createdBy === currentUserId && (
+                    <div style={styles.cardActions}>
+                      <IonButton
+                        size="small"
+                        fill="clear"
+                        color="primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          history.push(`/learners/${learner.id}/edit`);
+                        }}
+                      >
+                        <IonIcon slot="icon-only" icon={createOutline} />
+                      </IonButton>
+                      <IonButton
+                        size="small"
+                        fill="clear"
+                        color="danger"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteTarget(learner);
+                        }}
+                      >
+                        <IonIcon slot="icon-only" icon={trashOutline} />
+                      </IonButton>
+                    </div>
+                  )}
                 </div>
               </IonCardContent>
             </IonCard>
@@ -403,6 +448,27 @@ const LearnerListPage: React.FC = () => {
             </div>
           </IonContent>
         </IonModal>
+
+        <IonAlert
+          isOpen={!!deleteTarget}
+          onDidDismiss={() => setDeleteTarget(null)}
+          header="Delete Learner"
+          message={deleteTarget ? `Delete ${deleteTarget.firstName} ${deleteTarget.lastName}'s record? This cannot be undone.` : ''}
+          buttons={[
+            { text: 'Cancel', role: 'cancel' },
+            {
+              text: 'Delete',
+              role: 'destructive',
+              handler: () => {
+                if (deleteTarget) {
+                  void handleDelete(deleteTarget);
+                }
+              },
+            },
+          ]}
+        />
+
+        <IonAlert isOpen={!!deleteError} onDidDismiss={() => setDeleteError('')} header="Delete Failed" message={deleteError} buttons={['OK']} />
       </IonContent>
     </IonPage>
   );
@@ -420,6 +486,17 @@ const styles: Record<string, React.CSSProperties> = {
   },
   countNum: { color: '#fff', fontWeight: 900, fontSize: 18, lineHeight: 1 },
   countLbl: { color: 'rgba(255,255,255,0.75)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3 },
+  cardRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+  },
+  cardActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 2,
+    flexShrink: 0,
+  },
   avatar: {
     width: 48,
     height: 48,

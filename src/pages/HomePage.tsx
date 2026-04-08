@@ -19,6 +19,7 @@ import {
 import {
   barChartOutline,
   chevronForwardOutline,
+  logOutOutline,
   informationCircleOutline,
   listOutline,
   personAddOutline,
@@ -30,20 +31,37 @@ import { useHistory } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { DISTRICT, DIVISION, REGION } from '../utils/constants';
 import LogoImage from '../components/LogoImage';
+import { supabase } from '../utils/supabase';
 
 const HomePage: React.FC = () => {
   const { learners } = useAppContext();
   const history = useHistory();
   const [showAbout, setShowAbout] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const total = learners.length;
   const elementary = learners.filter((l) => l.lastGradeCompleted === 'G1 – G6 (Elementary)').length;
   const jhs = learners.filter((l) =>
     l.lastGradeCompleted?.includes('1st Year HS') ||
     l.lastGradeCompleted?.includes('2nd Year HS') ||
-    l.lastGradeCompleted?.includes('3rd Year HS')
+    l.lastGradeCompleted?.includes('3rd Year HS') ||
+    l.lastGradeCompleted?.includes('4th Year HS')
   ).length;
   const blp = learners.filter((l) => l.isBlp).length;
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+
+    try {
+      if (supabase) {
+        await supabase.auth.signOut();
+      }
+    } finally {
+      setIsLoggingOut(false);
+      history.replace('/sign-in');
+    }
+  };
 
   const menuItems = [
     {
@@ -126,6 +144,15 @@ const HomePage: React.FC = () => {
                 <div style={s.headerSub}>Community Mapping Tool</div>
               </div>
             </div>
+            <IonButton
+              fill="clear"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              style={s.logoutBtn}
+              aria-label="Logout"
+            >
+              <IonIcon icon={logOutOutline} style={{ fontSize: 20 }} />
+            </IonButton>
           </div>
           <div style={s.districtPill}>
             <span style={s.districtPillText}>{DISTRICT}</span>
@@ -248,6 +275,17 @@ const s: Record<string, React.CSSProperties> = {
   headerTop: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   headerTitle: { color: '#fff', fontWeight: 800, fontSize: 16, lineHeight: 1.2, letterSpacing: 0.1 },
   headerSub: { color: 'rgba(255,255,255,0.65)', fontSize: 11, fontWeight: 500, marginTop: 1, letterSpacing: 0.3 },
+  logoutBtn: {
+    '--color': '#ffffff',
+    '--background': 'rgba(255,255,255,0.14)',
+    '--border-radius': '999px',
+    '--padding-start': '10px',
+    '--padding-end': '10px',
+    minHeight: 36,
+    minWidth: 36,
+    backdropFilter: 'blur(6px)',
+    border: '1px solid rgba(255,255,255,0.24)'
+  } as React.CSSProperties,
   logoCircle: {
     width: 42,
     height: 42,

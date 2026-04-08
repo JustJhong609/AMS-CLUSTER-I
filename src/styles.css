@@ -157,6 +157,19 @@ ion-toolbar {
   font-size: clamp(1.2rem, 3vw, 1.6rem);
 }
 
+.education-helper-text {
+  display: block;
+  margin: 0 0 0.5rem;
+  color: var(--cluster-ink);
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.education-helper-text p {
+  margin: 0;
+}
+
 .badgeWrap {
   margin-bottom: 0.75rem;
 }

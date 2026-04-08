@@ -6,6 +6,7 @@ interface Props {
   value: string;
   onChange: (v: string) => void;
   options: readonly string[];
+  optionLabelFormatter?: (option: string) => string;
   placeholder?: string;
   required?: boolean;
   error?: string;
@@ -16,6 +17,7 @@ const FormSelect: React.FC<Props> = ({
   value,
   onChange,
   options,
+  optionLabelFormatter,
   placeholder,
   required,
   error
@@ -33,7 +35,7 @@ const FormSelect: React.FC<Props> = ({
     >
       {options.map((opt) => (
         <IonSelectOption key={opt} value={opt}>
-          {opt}
+          {optionLabelFormatter ? optionLabelFormatter(opt) : opt}
         </IonSelectOption>
       ))}
     </IonSelect>

@@ -2,7 +2,7 @@ import React from 'react';
 import { IonText, IonTextarea } from '@ionic/react';
 import { LearnerFormData, ValidationErrors } from '../../types';
 import { clusterCoverage } from '../../data/clusterCoverage';
-import { getBarangaysByMunicipalityDistrict, getDistrictOptions } from '../../utils/locationMapping';
+import { formatDistrictLabel, getBarangaysByMunicipalityDistrict, getDistrictOptions } from '../../utils/locationMapping';
 import FormInput from '../FormInput';
 import FormSelect from '../FormSelect';
 
@@ -63,6 +63,7 @@ const AddressSection: React.FC<Props> = ({ data, errors, onChange }) => {
           onChange('barangayOther', '');
         }}
         options={districtOptions}
+        optionLabelFormatter={formatDistrictLabel}
         placeholder={data.municipality ? 'Select District' : 'Select Municipality First'}
         required
         error={errors.learnerDistrict}

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { IonButton, IonButtons, IonCard, IonCardContent, IonContent, IonHeader, IonIcon, IonModal, IonPage, IonTitle, IonToolbar } from '@ionic/react';
+import { IonAlert, IonButton, IonButtons, IonCard, IonCardContent, IonContent, IonHeader, IonIcon, IonModal, IonPage, IonTitle, IonToolbar } from '@ionic/react';
 import {
   arrowBackOutline,
   eyeOffOutline,
@@ -7,20 +7,20 @@ import {
   lockClosedOutline,
   mailOutline,
   personOutline,
-  callOutline,
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
+import { supabase } from '../utils/supabase.ts';
 
 const SignUpPage: React.FC = () => {
   const history = useHistory();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
-    phoneNumber: '',
     password: '',
     confirmPassword: ''
   });
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -31,11 +31,13 @@ const SignUpPage: React.FC = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     setError('');
+    setSuccess('');
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
 
     if (!formData.fullName.trim() || !formData.email.trim() || !formData.password.trim()) {
       setError('All fields are required');
@@ -58,20 +60,37 @@ const SignUpPage: React.FC = () => {
     }
 
     setIsLoading(true);
-    // Simulate async signup - in real app, call backend
-    setTimeout(() => {
-      localStorage.setItem(
-        'als-user',
-        JSON.stringify({
-          fullName: formData.fullName,
-          email: formData.email,
-          phoneNumber: formData.phoneNumber,
-          role: 'mapper'
-        })
-      );
-      history.replace('/home');
+    try {
+      if (!supabase) {
+        throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY or SUPABASE_URL/SUPABASE_ANON_KEY to your environment.');
+      }
+
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: formData.email.trim(),
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.fullName.trim(),
+          },
+        },
+      });
+
+      if (signUpError) {
+        throw signUpError;
+      }
+
+      if (data.session) {
+        history.replace('/home');
+        return;
+      }
+
+      setSuccess('Account created. Check your email to confirm your account, then sign in.');
+      setFormData((prev) => ({ ...prev, password: '', confirmPassword: '' }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to create account right now. Please try again.');
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
   };
 
   const passwordStrength = useMemo(() => {
@@ -90,7 +109,7 @@ const SignUpPage: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent className="auth-page" style={{ '--background': 'linear-gradient(160deg, #1d4ed8 0%, #2563eb 48%, #4F46E5 100%)' } as React.CSSProperties}>
+      <IonContent className="auth-page" style={{ '--background': 'linear-gradient(160deg, #081a3a 0%, #0f3b7a 36%, #1e40af 68%, #0b244f 100%)' } as React.CSSProperties}>
         <style>{`
           .auth-page {
             --padding-top: 14px;
@@ -270,6 +289,66 @@ const SignUpPage: React.FC = () => {
             padding: 0;
           }
 
+          .signup-success-alert {
+            --backdrop-opacity: 0.24;
+            --background: rgba(255, 255, 255, 0.98);
+            --box-shadow: 0 18px 50px rgba(15, 23, 42, 0.22);
+            --max-width: 360px;
+            --width: min(88vw, 360px);
+          }
+
+          .signup-success-alert::part(backdrop) {
+            backdrop-filter: blur(12px);
+            animation: signupAlertBackdropIn 280ms ease 90ms both;
+          }
+
+          .signup-success-alert::part(wrapper) {
+            border-radius: 28px;
+            overflow: hidden;
+            transform-origin: center;
+            animation: signupAlertIn 420ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+          }
+
+          .signup-success-alert::part(header),
+          .signup-success-alert::part(message),
+          .signup-success-alert::part(button) {
+            letter-spacing: 0.1px;
+          }
+
+          .signup-success-alert::part(header) {
+            padding-bottom: 6px;
+          }
+
+          .signup-success-alert::part(message) {
+            line-height: 1.55;
+          }
+
+          .signup-success-alert::part(button) {
+            font-weight: 700;
+          }
+
+          @keyframes signupAlertIn {
+            0% {
+              opacity: 0;
+              transform: translateY(10px) scale(0.96);
+              filter: blur(4px);
+            }
+            100% {
+              opacity: 1;
+              transform: translateY(0) scale(1);
+              filter: blur(0);
+            }
+          }
+
+          @keyframes signupAlertBackdropIn {
+            0% {
+              opacity: 0;
+            }
+            100% {
+              opacity: 1;
+            }
+          }
+
           @media (min-width: 768px) {
             .auth-page {
               --padding-top: 24px;
@@ -343,22 +422,6 @@ const SignUpPage: React.FC = () => {
                 </div>
 
                 <div style={s.formGroup}>
-                  <label style={s.label}>Phone Number (optional)</label>
-                  <div className="field-wrap">
-                    <IonIcon className="field-icon" icon={callOutline} />
-                    <input
-                      className="field-input"
-                      type="tel"
-                      name="phoneNumber"
-                      placeholder="09XXXXXXXXX"
-                      value={formData.phoneNumber}
-                      onChange={handleChange}
-                      disabled={isLoading}
-                    />
-                  </div>
-                </div>
-
-                <div style={s.formGroup}>
                   <label style={s.label}>Password</label>
                   <div className="field-wrap">
                     <IonIcon className="field-icon" icon={lockClosedOutline} />
@@ -425,8 +488,7 @@ const SignUpPage: React.FC = () => {
                 <IonButton
                   expand="block"
                   style={{ ...s.submitBtn, opacity: isLoading ? 0.7 : 1 } as React.CSSProperties}
-                  onClick={handleSignUp}
-                  disabled={isLoading}
+                  disabled={isLoading || !acceptedTerms}
                   type="submit"
                 >
                   <IonIcon slot="start" icon={personOutline} />
@@ -480,6 +542,23 @@ const SignUpPage: React.FC = () => {
               </div>
             </IonContent>
           </IonModal>
+
+          <IonAlert
+            isOpen={!!success}
+            backdropDismiss={false}
+            cssClass="signup-success-alert"
+            header="Account Created"
+            message={success}
+            buttons={[
+              {
+                text: 'OK',
+                handler: () => {
+                  setSuccess('');
+                  history.replace('/sign-in');
+                },
+              },
+            ]}
+          />
         </div>
         </div>
       </IonContent>
@@ -573,8 +652,8 @@ const s: Record<string, React.CSSProperties> = {
     letterSpacing: 0.2
   },
   submitBtn: {
-    '--background': 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
-    '--box-shadow': '0 12px 24px rgba(79,70,229,0.3)',
+    '--background': 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 55%, #1d4ed8 100%)',
+    '--box-shadow': '0 12px 24px rgba(37,99,235,0.32)',
     '--border-radius': '12px',
     '--color': '#fff',
     fontWeight: 800,
@@ -606,6 +685,15 @@ const s: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     padding: '8px 12px',
     background: '#ffebee',
+    borderRadius: 8,
+    marginTop: 4
+  },
+  successMsg: {
+    color: '#166534',
+    fontSize: 12,
+    fontWeight: 600,
+    padding: '8px 12px',
+    background: '#dcfce7',
     borderRadius: 8,
     marginTop: 4
   }

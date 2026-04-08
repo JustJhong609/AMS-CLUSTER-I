@@ -51,6 +51,16 @@ export const getDistrictOptions = (municipality?: MunicipalityKey | ''): string[
   return Array.from(new Set(list.map((item) => item.district)));
 };
 
+export const formatDistrictLabel = (district: string): string => {
+  if (!district) return district;
+
+  return district
+    .toLowerCase()
+    .split(' ')
+    .map((part) => (part.match(/^(i|ii|iii|iv|v|vi|vii|viii|ix|x)$/i) ? part.toUpperCase() : part.charAt(0).toUpperCase() + part.slice(1)))
+    .join(' ');
+};
+
 export const getBarangaysByMunicipalityDistrict = (municipality?: MunicipalityKey | '', district?: string): string[] => {
   if (!municipality) return [];
 
