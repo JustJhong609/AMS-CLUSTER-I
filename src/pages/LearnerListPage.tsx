@@ -10,6 +10,8 @@ import {
   IonHeader,
   IonIcon,
   IonPage,
+  IonRefresher,
+  IonRefresherContent,
   IonSearchbar,
   IonToolbar,
   IonText,
@@ -33,7 +35,7 @@ import { formatDate } from '../utils/helpers';
 import { formatDistrictLabel, getDistrictByBarangay, getDistrictOptions, getMunicipalityByBarangay, getMunicipalityByDistrict } from '../utils/locationMapping';
 
 const LearnerListPage: React.FC = () => {
-  const { learners, setLearners, currentUserId } = useAppContext();
+  const { learners, setLearners, currentUserId, pendingSyncCount, refreshLearners } = useAppContext();
   const history = useHistory();
   const [query, setQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -331,6 +333,25 @@ const LearnerListPage: React.FC = () => {
       </IonHeader>
 
       <IonContent>
+        <IonRefresher
+          slot="fixed"
+          onIonRefresh={async (event) => {
+            try {
+              await refreshLearners();
+            } finally {
+              event.detail.complete();
+            }
+          }}
+        >
+          <IonRefresherContent pullingText="Pull to refresh" refreshingText="Refreshing learners..." />
+        </IonRefresher>
+
+        {pendingSyncCount > 0 && (
+          <div style={styles.pendingSyncBanner}>
+            {pendingSyncCount} learner{pendingSyncCount > 1 ? 's' : ''} pending sync when back online
+          </div>
+        )}
+
         {filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 32px' }}>
             <div style={{ width: 88, height: 88, borderRadius: '50%', background: '#E3F2FD', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
@@ -603,6 +624,17 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 16,
     fontWeight: 700,
     wordBreak: 'break-word',
+  },
+  pendingSyncBanner: {
+    margin: '10px 16px 4px',
+    background: '#fff7ed',
+    color: '#9a3412',
+    border: '1px solid #fed7aa',
+    borderRadius: 10,
+    padding: '8px 10px',
+    fontSize: 12,
+    fontWeight: 700,
+    textAlign: 'center',
   },
 };
 

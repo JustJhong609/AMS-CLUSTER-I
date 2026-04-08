@@ -4,6 +4,8 @@ import { Learner } from '../types';
 interface AppContextValue {
   learners: Learner[];
   setLearners: React.Dispatch<React.SetStateAction<Learner[]>>;
+  refreshLearners: () => Promise<void>;
+  pendingSyncCount: number;
   currentUserName: string;
   currentUserId: string;
 }

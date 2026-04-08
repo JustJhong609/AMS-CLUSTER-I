@@ -11,17 +11,44 @@ import LearnerListPage from './pages/LearnerListPage';
 import LearnerFormPage from './pages/LearnerFormPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import { Learner } from './types';
-import { fetchLearners } from './utils/learnerApi';
+import {
+  fetchLearners,
+  getCachedLearners,
+  getPendingLearnerSyncCount,
+  getPendingLearnerSyncEventName,
+  syncPendingLearnerOperations,
+} from './utils/learnerApi';
 import { supabase } from './utils/supabase.ts';
 
 setupIonicReact({ mode: 'md' });
 
 const App: React.FC = () => {
-  const [learners, setLearners] = useState<Learner[]>([]);
+  const [learners, setLearners] = useState<Learner[]>(() => getCachedLearners());
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUserName, setCurrentUserName] = useState('');
   const [currentUserId, setCurrentUserId] = useState('');
+  const [pendingSyncCount, setPendingSyncCount] = useState<number>(() => getPendingLearnerSyncCount());
+
+  const refreshPendingSyncCount = () => {
+    setPendingSyncCount(getPendingLearnerSyncCount());
+  };
+
+  const refreshLearners = async (): Promise<void> => {
+    try {
+      await syncPendingLearnerOperations().catch(() => {
+        // Ignore background sync errors during learner refresh.
+      });
+
+      const data = await fetchLearners();
+      setLearners(data);
+    } catch {
+      // Keep existing cached learners visible during transient fetch issues.
+      setLearners(getCachedLearners());
+    } finally {
+      refreshPendingSyncCount();
+    }
+  };
 
   const resolveUserName = (session: unknown): string => {
     const candidate = session as {
@@ -59,6 +86,7 @@ const App: React.FC = () => {
     let bootstrapSettled = false;
     let activeAuthSubscription: { unsubscribe: () => void } | undefined;
     let loadingWatchdog: ReturnType<typeof setTimeout> | undefined;
+    const queueChangedEventName = getPendingLearnerSyncEventName();
 
     const finishBootstrap = () => {
       if (!mounted || bootstrapSettled) return;
@@ -76,6 +104,9 @@ const App: React.FC = () => {
 
     const init = async () => {
       try {
+        setLearners(getCachedLearners());
+        refreshPendingSyncCount();
+
         if (!supabase) {
           return;
         }
@@ -90,13 +121,9 @@ const App: React.FC = () => {
         }
 
         if (hasSession) {
-          void fetchLearners()
-            .then((data) => {
-              if (mounted) setLearners(data);
-            })
-            .catch(() => {
-              // Allow app usage even if local learner cache init fails.
-            });
+          void refreshLearners().catch(() => {
+            // Allow app usage even if local learner cache init fails.
+          });
         }
 
         const { data: listener } = supabase.auth.onAuthStateChange((_event: unknown, session: unknown) => {
@@ -110,18 +137,35 @@ const App: React.FC = () => {
 
           if (!loggedIn) {
             setLearners([]);
+            refreshPendingSyncCount();
             return;
           }
 
-          void fetchLearners()
-            .then((data) => {
-              if (mounted) setLearners(data);
-            })
-            .catch(() => {
-              // Ignore local cache errors from background refresh.
-            });
+          void refreshLearners().catch(() => {
+            // Ignore local cache errors from background refresh.
+          });
         });
         activeAuthSubscription = listener.subscription;
+
+        const handleOnline = () => {
+          void refreshLearners().catch(() => {
+            // Ignore local cache refresh errors from online event.
+          });
+        };
+
+        const handleQueueChanged = () => {
+          refreshPendingSyncCount();
+        };
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener(queueChangedEventName, handleQueueChanged);
+        activeAuthSubscription = {
+          unsubscribe: () => {
+            listener.subscription.unsubscribe();
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener(queueChangedEventName, handleQueueChanged);
+          },
+        };
       } catch {
         // Ignore storage/bootstrap errors and show the app.
       } finally {
@@ -139,7 +183,7 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <AppProvider value={{ learners, setLearners, currentUserName, currentUserId }}>
+    <AppProvider value={{ learners, setLearners, refreshLearners, pendingSyncCount, currentUserName, currentUserId }}>
       <IonLoading isOpen={loading} message="Please wait..." spinner="crescent" />
       {!loading && (
         <IonReactRouter>

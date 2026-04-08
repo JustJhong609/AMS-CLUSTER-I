@@ -100,7 +100,7 @@ const SignInPage: React.FC = () => {
         <div style={s.bgPattern} />
 
         <div className="auth-topbar" style={s.topBar}>
-          <button style={s.backBtn} onClick={() => history.goBack()}>
+          <button style={s.backBtn} onClick={() => history.replace('/landing')}>
             <IonIcon icon={arrowBackOutline} style={{ color: '#fff', fontSize: 24 }} />
           </button>
         </div>

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ALS Cluster I Mapper</string>
+    <string name="title_activity_main">ALS Cluster I Mapper</string>
+    <string name="package_name">com.alsclusteri.mapping</string>
+    <string name="custom_url_scheme">com.alsclusteri.mapping</string>
+</resources>

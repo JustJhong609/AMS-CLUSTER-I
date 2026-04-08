@@ -28,7 +28,26 @@ const LogisticsSection: React.FC<Props> = ({ data, errors, onChange }) => (
       error={errors.distanceKm}
     />
 
-    <FormInput label="Travel Time" value={data.travelTime} onChange={(v) => onChange('travelTime', v)} required error={errors.travelTime} />
+    <div className="form-group">
+      <FormInput
+        label="Travel Time"
+        value={data.travelTime}
+        onChange={(v) => onChange('travelTime', v)}
+        type="number"
+        inputmode="numeric"
+        placeholder="Enter number"
+        required
+        error={errors.travelTime}
+      />
+      <FormSelect
+        label="Travel Time Unit"
+        value={data.travelTimeUnit}
+        onChange={(v) => onChange('travelTimeUnit', v)}
+        options={['Hour', 'Minutes']}
+        required
+        error={errors.travelTimeUnit}
+      />
+    </div>
 
     <FormSelect
       label="Mode of Transport"

@@ -37,6 +37,42 @@ npm run dev
 http://localhost:8100
 ```
 
+## Build Android App (APK)
+
+This project is configured for Capacitor Android packaging.
+
+1. Install dependencies (includes Capacitor packages):
+
+```bash
+npm install
+```
+
+2. Build web assets and sync to Android project:
+
+```bash
+npm run apk:prepare
+```
+
+3. Create Android platform folder (run once):
+
+```bash
+npm run android:add
+```
+
+4. Open in Android Studio:
+
+```bash
+npm run android:open
+```
+
+5. In Android Studio, build the APK:
+
+```text
+Build > Build Bundle(s) / APK(s) > Build APK(s)
+```
+
+Note: Codespaces typically do not include full Android SDK/Android Studio UI, so final APK generation is usually completed on a local machine after pushing these changes.
+
 ## Supabase Authentication Setup
 
 Authentication now uses Supabase Auth.

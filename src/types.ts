@@ -123,6 +123,7 @@ export interface LearnerFormData {
 
   distanceKm: string;
   travelTime: string;
+  travelTimeUnit: 'Hour' | 'Minutes';
   transportMode: string;
   preferredSessionTime: string;
   dateMapped: string;

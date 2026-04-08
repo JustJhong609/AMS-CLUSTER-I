@@ -23,7 +23,7 @@ import FamilySection from '../components/form/FamilySection';
 import LogisticsSection from '../components/form/LogisticsSection';
 import PersonalInfoSection from '../components/form/PersonalInfoSection';
 import { Learner, LearnerFormData } from '../types';
-import { calculateAge, createEmptyFormData, generateId } from '../utils/helpers';
+import { calculateAge, createEmptyFormData, formatTravelTime, generateId, parseTravelTime } from '../utils/helpers';
 import { createLearner, updateLearner } from '../utils/learnerApi';
 import { validateSection } from '../utils/validation';
 
@@ -31,62 +31,67 @@ const TOTAL_STEPS = 5;
 
 const toYesNo = (value: boolean): string => (value ? 'Yes' : 'No');
 
-const learnerToFormData = (learner: Learner): LearnerFormData => ({
-  region: learner.region,
-  division: learner.division,
-  district: learner.district,
-  calendarYear: learner.calendarYear,
-  mappedBy: learner.mappedBy,
+const learnerToFormData = (learner: Learner): LearnerFormData => {
+  const parsedTravelTime = parseTravelTime(learner.travelTime);
 
-  lastName: learner.lastName,
-  firstName: learner.firstName,
-  middleName: learner.middleName,
-  nameExtension: learner.nameExtension ?? '',
-  sex: learner.sex,
-  civilStatus: learner.civilStatus,
-  birthdate: learner.birthdate,
-  age: String(learner.age),
-  motherTongue: learner.motherTongue,
-  motherTongueOther: '',
-  isIP: toYesNo(learner.isIP),
-  ipTribe: learner.ipTribe ?? '',
-  religion: learner.religion ?? '',
-  is4PsMember: toYesNo(learner.is4PsMember),
-  fourPsOrIp: learner.fourPsOrIp ?? '',
-  isPwd: toYesNo(learner.isPwd),
-  pwdType: learner.pwdType ?? '',
-  pwdTypeOther: learner.pwdTypeOther ?? '',
+  return {
+    region: learner.region,
+    division: learner.division,
+    district: learner.district,
+    calendarYear: learner.calendarYear,
+    mappedBy: learner.mappedBy,
 
-  municipality: learner.municipality,
-  learnerDistrict: learner.learnerDistrict,
-  barangay: learner.barangay,
-  barangayOther: '',
-  completeAddress: learner.completeAddress,
+    lastName: learner.lastName,
+    firstName: learner.firstName,
+    middleName: learner.middleName,
+    nameExtension: learner.nameExtension ?? '',
+    sex: learner.sex,
+    civilStatus: learner.civilStatus,
+    birthdate: learner.birthdate,
+    age: String(learner.age),
+    motherTongue: learner.motherTongue,
+    motherTongueOther: '',
+    isIP: toYesNo(learner.isIP),
+    ipTribe: learner.ipTribe ?? '',
+    religion: learner.religion ?? '',
+    is4PsMember: toYesNo(learner.is4PsMember),
+    fourPsOrIp: learner.fourPsOrIp ?? '',
+    isPwd: toYesNo(learner.isPwd),
+    pwdType: learner.pwdType ?? '',
+    pwdTypeOther: learner.pwdTypeOther ?? '',
 
-  roleInFamily: learner.roleInFamily,
-  fatherName: learner.fatherName ?? '',
-  motherName: learner.motherName ?? '',
-  guardianName: learner.guardianName ?? '',
-  guardianOccupation: learner.guardianOccupation ?? '',
+    municipality: learner.municipality,
+    learnerDistrict: learner.learnerDistrict,
+    barangay: learner.barangay,
+    barangayOther: '',
+    completeAddress: learner.completeAddress,
 
-  schoolName: learner.schoolName ?? '',
-  currentlyStudying: learner.currentlyStudying,
-  lastGradeCompleted: learner.lastGradeCompleted,
-  reasonForNotAttending: learner.reasonForNotAttending,
-  reasonForNotAttendingOther: learner.reasonForNotAttendingOther ?? '',
-  isBlp: toYesNo(learner.isBlp),
-  occupationType: learner.occupationType ?? '',
-  employmentStatus: learner.employmentStatus ?? '',
-  monthlyIncome: learner.monthlyIncome ?? '',
-  interestedInALS: learner.interestedInALS,
-  contactNumber: learner.contactNumber ?? '',
+    roleInFamily: learner.roleInFamily,
+    fatherName: learner.fatherName ?? '',
+    motherName: learner.motherName ?? '',
+    guardianName: learner.guardianName ?? '',
+    guardianOccupation: learner.guardianOccupation ?? '',
 
-  distanceKm: String(learner.distanceKm),
-  travelTime: learner.travelTime,
-  transportMode: learner.transportMode,
-  preferredSessionTime: learner.preferredSessionTime,
-  dateMapped: learner.dateMapped,
-});
+    schoolName: learner.schoolName ?? '',
+    currentlyStudying: learner.currentlyStudying,
+    lastGradeCompleted: learner.lastGradeCompleted,
+    reasonForNotAttending: learner.reasonForNotAttending,
+    reasonForNotAttendingOther: learner.reasonForNotAttendingOther ?? '',
+    isBlp: toYesNo(learner.isBlp),
+    occupationType: learner.occupationType ?? '',
+    employmentStatus: learner.employmentStatus ?? '',
+    monthlyIncome: learner.monthlyIncome ?? '',
+    interestedInALS: learner.interestedInALS,
+    contactNumber: learner.contactNumber ?? '',
+
+    distanceKm: String(learner.distanceKm),
+    travelTime: parsedTravelTime.value,
+    travelTimeUnit: parsedTravelTime.unit,
+    transportMode: learner.transportMode,
+    preferredSessionTime: learner.preferredSessionTime,
+    dateMapped: learner.dateMapped,
+  };
+};
 
 const LearnerFormPage: React.FC = () => {
   const { id } = useParams() as { id?: string };
@@ -218,7 +223,7 @@ const LearnerFormPage: React.FC = () => {
       interestedInALS: formData.interestedInALS || 'No',
       contactNumber: formData.contactNumber.trim() || undefined,
       distanceKm: parseFloat(formData.distanceKm),
-      travelTime: formData.travelTime.trim(),
+      travelTime: formatTravelTime(formData.travelTime, formData.travelTimeUnit),
       transportMode: formData.transportMode,
       preferredSessionTime: formData.preferredSessionTime,
       dateMapped: formData.dateMapped
