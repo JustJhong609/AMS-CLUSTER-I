@@ -35,6 +35,13 @@ type SectionKey = 'municipality' | 'district' | 'barangay' | 'overallElementary'
 
 type DownloadScope = 'overall' | 'municipality' | 'district' | 'barangay';
 
+const isJhsGradeCompleted = (grade?: string): boolean => Boolean(
+  grade?.includes('1st Year HS') ||
+  grade?.includes('2nd Year HS') ||
+  grade?.includes('3rd Year HS') ||
+  grade?.includes('4th Year HS')
+);
+
 type ReportRow = {
   firstName: string;
   lastName: string;
@@ -229,11 +236,7 @@ const AnalyticsPage: React.FC = () => {
 
       if (l.isBlp) blp += 1;
       else if (l.lastGradeCompleted === 'G1 – G6 (Elementary)') elementary += 1;
-      else if (
-        l.lastGradeCompleted?.includes('1st Year HS') ||
-        l.lastGradeCompleted?.includes('2nd Year HS') ||
-        l.lastGradeCompleted?.includes('3rd Year HS')
-      ) {
+      else if (isJhsGradeCompleted(l.lastGradeCompleted)) {
         jhs += 1;
       }
 
@@ -322,11 +325,7 @@ const AnalyticsPage: React.FC = () => {
   };
 
   const isElementaryLearner = (learner: typeof learners[number]) => learner.lastGradeCompleted === 'G1 – G6 (Elementary)' && !learner.isBlp;
-  const isJhsLearner = (learner: typeof learners[number]) => (
-    learner.lastGradeCompleted?.includes('1st Year HS') ||
-    learner.lastGradeCompleted?.includes('2nd Year HS') ||
-    learner.lastGradeCompleted?.includes('3rd Year HS')
-  ) && !learner.isBlp;
+  const isJhsLearner = (learner: typeof learners[number]) => isJhsGradeCompleted(learner.lastGradeCompleted) && !learner.isBlp;
   const isBlpLearner = (learner: typeof learners[number]) => learner.isBlp;
 
   const toChart = (entries: [string, number][], colors: string[]): ChartDatum[] =>
@@ -380,11 +379,7 @@ const AnalyticsPage: React.FC = () => {
         if (row.isPwd) acc.pwd += 1;
         if (row.isBlp) acc.blp += 1;
         else if (row.lastGradeCompleted === 'G1 – G6 (Elementary)') acc.elementary += 1;
-        else if (
-          row.lastGradeCompleted?.includes('1st Year HS') ||
-          row.lastGradeCompleted?.includes('2nd Year HS') ||
-          row.lastGradeCompleted?.includes('3rd Year HS')
-        ) {
+        else if (isJhsGradeCompleted(row.lastGradeCompleted)) {
           acc.jhs += 1;
         }
         if (row.age <= 24) acc.youth += 1;
@@ -548,11 +543,7 @@ const AnalyticsPage: React.FC = () => {
           if (row.isPwd) acc.pwd += 1;
           if (row.isBlp) acc.blp += 1;
           else if (row.lastGradeCompleted === 'G1 – G6 (Elementary)') acc.elementary += 1;
-          else if (
-            row.lastGradeCompleted?.includes('1st Year HS') ||
-            row.lastGradeCompleted?.includes('2nd Year HS') ||
-            row.lastGradeCompleted?.includes('3rd Year HS')
-          ) {
+          else if (isJhsGradeCompleted(row.lastGradeCompleted)) {
             acc.jhs += 1;
           }
           return acc;

@@ -4,6 +4,8 @@ import { Learner } from '../types';
 interface AppContextValue {
   learners: Learner[];
   setLearners: React.Dispatch<React.SetStateAction<Learner[]>>;
+  currentUserName: string;
+  currentUserId: string;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);

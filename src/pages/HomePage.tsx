@@ -41,7 +41,8 @@ const HomePage: React.FC = () => {
   const jhs = learners.filter((l) =>
     l.lastGradeCompleted?.includes('1st Year HS') ||
     l.lastGradeCompleted?.includes('2nd Year HS') ||
-    l.lastGradeCompleted?.includes('3rd Year HS')
+    l.lastGradeCompleted?.includes('3rd Year HS') ||
+    l.lastGradeCompleted?.includes('4th Year HS')
   ).length;
   const blp = learners.filter((l) => l.isBlp).length;
 

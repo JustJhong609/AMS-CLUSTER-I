@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   IonAlert,
   IonBackButton,
@@ -14,7 +14,7 @@ import {
   IonToolbar
 } from '@ionic/react';
 import { checkmarkOutline, chevronBackOutline, chevronForwardOutline } from 'ionicons/icons';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import StepIndicator from '../components/StepIndicator';
 import AddressSection from '../components/form/AddressSection';
@@ -24,14 +24,76 @@ import LogisticsSection from '../components/form/LogisticsSection';
 import PersonalInfoSection from '../components/form/PersonalInfoSection';
 import { Learner, LearnerFormData } from '../types';
 import { calculateAge, createEmptyFormData, generateId } from '../utils/helpers';
-import { createLearner } from '../utils/learnerApi';
+import { createLearner, updateLearner } from '../utils/learnerApi';
 import { validateSection } from '../utils/validation';
 
 const TOTAL_STEPS = 5;
 
+const toYesNo = (value: boolean): string => (value ? 'Yes' : 'No');
+
+const learnerToFormData = (learner: Learner): LearnerFormData => ({
+  region: learner.region,
+  division: learner.division,
+  district: learner.district,
+  calendarYear: learner.calendarYear,
+  mappedBy: learner.mappedBy,
+
+  lastName: learner.lastName,
+  firstName: learner.firstName,
+  middleName: learner.middleName,
+  nameExtension: learner.nameExtension ?? '',
+  sex: learner.sex,
+  civilStatus: learner.civilStatus,
+  birthdate: learner.birthdate,
+  age: String(learner.age),
+  motherTongue: learner.motherTongue,
+  motherTongueOther: '',
+  isIP: toYesNo(learner.isIP),
+  ipTribe: learner.ipTribe ?? '',
+  religion: learner.religion ?? '',
+  is4PsMember: toYesNo(learner.is4PsMember),
+  fourPsOrIp: learner.fourPsOrIp ?? '',
+  isPwd: toYesNo(learner.isPwd),
+  pwdType: learner.pwdType ?? '',
+  pwdTypeOther: learner.pwdTypeOther ?? '',
+
+  municipality: learner.municipality,
+  learnerDistrict: learner.learnerDistrict,
+  barangay: learner.barangay,
+  barangayOther: '',
+  completeAddress: learner.completeAddress,
+
+  roleInFamily: learner.roleInFamily,
+  fatherName: learner.fatherName ?? '',
+  motherName: learner.motherName ?? '',
+  guardianName: learner.guardianName ?? '',
+  guardianOccupation: learner.guardianOccupation ?? '',
+
+  schoolName: learner.schoolName ?? '',
+  currentlyStudying: learner.currentlyStudying,
+  lastGradeCompleted: learner.lastGradeCompleted,
+  reasonForNotAttending: learner.reasonForNotAttending,
+  reasonForNotAttendingOther: learner.reasonForNotAttendingOther ?? '',
+  isBlp: toYesNo(learner.isBlp),
+  occupationType: learner.occupationType ?? '',
+  employmentStatus: learner.employmentStatus ?? '',
+  monthlyIncome: learner.monthlyIncome ?? '',
+  interestedInALS: learner.interestedInALS,
+  contactNumber: learner.contactNumber ?? '',
+
+  distanceKm: String(learner.distanceKm),
+  travelTime: learner.travelTime,
+  transportMode: learner.transportMode,
+  preferredSessionTime: learner.preferredSessionTime,
+  dateMapped: learner.dateMapped,
+});
+
 const LearnerFormPage: React.FC = () => {
-  const { setLearners } = useAppContext();
+  const { id } = useParams() as { id?: string };
+  const { learners, setLearners, currentUserName } = useAppContext();
   const history = useHistory();
+  const isEditMode = Boolean(id);
+  const existingLearner = isEditMode ? learners.find((item) => item.id === id) : undefined;
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState<LearnerFormData>(createEmptyFormData());
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -39,6 +101,24 @@ const LearnerFormPage: React.FC = () => {
   const [saveError, setSaveError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const contentRef = useRef<HTMLIonContentElement>(null);
+
+  useEffect(() => {
+    if (!currentUserName.trim()) return;
+
+    setFormData((prev) => (prev.mappedBy.trim() ? prev : { ...prev, mappedBy: currentUserName }));
+  }, [currentUserName]);
+
+  useEffect(() => {
+    if (!isEditMode || !existingLearner) return;
+    setFormData(learnerToFormData(existingLearner));
+  }, [isEditMode, existingLearner]);
+
+  useEffect(() => {
+    if (!isEditMode) return;
+    if (existingLearner) return;
+    if (!learners.length) return;
+    history.replace('/learners');
+  }, [isEditMode, existingLearner, learners.length, history]);
 
   const handleChange = (field: keyof LearnerFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -94,7 +174,7 @@ const LearnerFormPage: React.FC = () => {
     const resolvedMunicipality = formData.municipality as Learner['municipality'];
 
     const learner: Learner = {
-      id: generateId(),
+      id: existingLearner?.id ?? generateId(),
       region: formData.region,
       division: formData.division,
       district: formData.district,
@@ -145,8 +225,13 @@ const LearnerFormPage: React.FC = () => {
     };
 
     try {
-      await createLearner(learner);
-      setLearners((prev) => [learner, ...prev]);
+      if (isEditMode) {
+        const updatedLearner = await updateLearner(learner);
+        setLearners((prev) => prev.map((item) => (item.id === updatedLearner.id ? updatedLearner : item)));
+      } else {
+        const savedLearner = await createLearner(learner);
+        setLearners((prev) => [savedLearner, ...prev]);
+      }
       setShowSaveAlert(false);
       history.replace('/learners');
     } catch (error: any) {
@@ -173,7 +258,7 @@ const LearnerFormPage: React.FC = () => {
           <IonButtons slot="start">
             <IonBackButton defaultHref="/learners" />
           </IonButtons>
-          <IonTitle>New Learner</IonTitle>
+          <IonTitle>{isEditMode ? 'Edit Learner' : 'New Learner'}</IonTitle>
         </IonToolbar>
         <StepIndicator currentStep={step} />
       </IonHeader>
@@ -219,17 +304,17 @@ const LearnerFormPage: React.FC = () => {
       <IonAlert
         isOpen={showSaveAlert}
         onDidDismiss={() => setShowSaveAlert(false)}
-        header="Save Learner"
-        message={`Save ${formData.firstName} ${formData.lastName}'s record?`}
+        header={isEditMode ? 'Update Learner' : 'Save Learner'}
+        message={`${isEditMode ? 'Update' : 'Save'} ${formData.firstName} ${formData.lastName}'s record?`}
         buttons={[
           { text: 'Cancel', role: 'cancel' },
-          { text: 'Save', handler: handleSave }
+          { text: isEditMode ? 'Update' : 'Save', handler: handleSave }
         ]}
       />
 
-      <IonAlert isOpen={!!saveError} onDidDismiss={() => setSaveError('')} header="Save Failed" message={saveError} buttons={['OK']} />
+      <IonAlert isOpen={!!saveError} onDidDismiss={() => setSaveError('')} header={isEditMode ? 'Update Failed' : 'Save Failed'} message={saveError} buttons={['OK']} />
 
-      <IonLoading isOpen={isSaving} message="Saving learner record..." spinner="crescent" />
+      <IonLoading isOpen={isSaving} message={isEditMode ? 'Updating learner record...' : 'Saving learner record...'} spinner="crescent" />
     </IonPage>
   );
 };
