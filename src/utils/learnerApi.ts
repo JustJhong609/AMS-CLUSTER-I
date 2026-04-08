@@ -57,6 +57,19 @@ type LearnerRow = {
 
 const LEARNERS_TABLE = 'learners';
 const REQUEST_TIMEOUT_MS = 12000;
+const LEARNERS_CACHE_KEY = 'als.learners.cache.v1';
+const LEARNERS_QUEUE_KEY = 'als.learners.queue.v1';
+const QUEUE_CHANGED_EVENT = 'learner-queue-changed';
+
+type PendingLearnerOperation = {
+  id: string;
+  type: 'create' | 'update' | 'delete';
+  learnerId: string;
+  learner?: Learner;
+  queuedAt: string;
+};
+
+let activeSyncPromise: Promise<{ synced: number; failed: number }> | null = null;
 
 type QueryResponse<T> = {
   data: T;
@@ -84,6 +97,154 @@ const withTimeout = async <T>(promise: Promise<T>, label: string): Promise<T> =>
       clearTimeout(timeoutId);
     }
   }
+};
+
+const getStorage = (): Storage | null => {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage;
+};
+
+const readLearnerCache = (): Learner[] => {
+  const storage = getStorage();
+  if (!storage) return [];
+
+  try {
+    const raw = storage.getItem(LEARNERS_CACHE_KEY);
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as Learner[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeLearnerCache = (learners: Learner[]): void => {
+  const storage = getStorage();
+  if (!storage) return;
+
+  try {
+    storage.setItem(LEARNERS_CACHE_KEY, JSON.stringify(learners));
+  } catch {
+    // Ignore storage quota/serialization issues.
+  }
+};
+
+const readPendingQueue = (): PendingLearnerOperation[] => {
+  const storage = getStorage();
+  if (!storage) return [];
+
+  try {
+    const raw = storage.getItem(LEARNERS_QUEUE_KEY);
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as PendingLearnerOperation[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const writePendingQueue = (queue: PendingLearnerOperation[]): void => {
+  const storage = getStorage();
+  if (!storage) return;
+
+  try {
+    storage.setItem(LEARNERS_QUEUE_KEY, JSON.stringify(queue));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event(QUEUE_CHANGED_EVENT));
+    }
+  } catch {
+    // Ignore storage quota/serialization issues.
+  }
+};
+
+export const getCachedLearners = (): Learner[] => readLearnerCache();
+
+export const getPendingLearnerSyncCount = (): number => readPendingQueue().length;
+
+export const getPendingLearnerSyncEventName = (): string => QUEUE_CHANGED_EVENT;
+
+const enqueuePendingOperation = (operation: Omit<PendingLearnerOperation, 'id' | 'queuedAt'>): void => {
+  const queue = readPendingQueue();
+  const existingCreateIndex = queue.findIndex((item) => item.learnerId === operation.learnerId && item.type === 'create');
+  const existingUpdateIndex = queue.findIndex((item) => item.learnerId === operation.learnerId && item.type === 'update');
+  const existingDeleteIndex = queue.findIndex((item) => item.learnerId === operation.learnerId && item.type === 'delete');
+
+  if (operation.type === 'create') {
+    if (existingCreateIndex >= 0) {
+      queue[existingCreateIndex] = {
+        ...queue[existingCreateIndex],
+        learner: operation.learner,
+        queuedAt: new Date().toISOString(),
+      };
+      writePendingQueue(queue);
+      return;
+    }
+  }
+
+  if (operation.type === 'update') {
+    if (existingCreateIndex >= 0) {
+      queue[existingCreateIndex] = {
+        ...queue[existingCreateIndex],
+        learner: operation.learner,
+        queuedAt: new Date().toISOString(),
+      };
+      writePendingQueue(queue);
+      return;
+    }
+
+    if (existingUpdateIndex >= 0) {
+      queue[existingUpdateIndex] = {
+        ...queue[existingUpdateIndex],
+        learner: operation.learner,
+        queuedAt: new Date().toISOString(),
+      };
+      writePendingQueue(queue);
+      return;
+    }
+  }
+
+  if (operation.type === 'delete') {
+    if (existingCreateIndex >= 0) {
+      const trimmed = queue.filter((item) => item.learnerId !== operation.learnerId);
+      writePendingQueue(trimmed);
+      return;
+    }
+
+    const withoutUpdates = queue.filter((item) => !(item.learnerId === operation.learnerId && item.type === 'update'));
+    if (existingDeleteIndex >= 0) {
+      writePendingQueue(withoutUpdates);
+      return;
+    }
+
+    withoutUpdates.push({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      queuedAt: new Date().toISOString(),
+      ...operation,
+    });
+    writePendingQueue(withoutUpdates);
+    return;
+  }
+
+  queue.push({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    queuedAt: new Date().toISOString(),
+    ...operation,
+  });
+  writePendingQueue(queue);
+};
+
+const isOnline = (): boolean => {
+  if (typeof navigator === 'undefined') return true;
+  return navigator.onLine;
+};
+
+const isOfflineLikeError = (error: unknown): boolean => {
+  if (!isOnline()) return true;
+
+  const message = error instanceof Error ? error.message : `${error ?? ''}`;
+  return /Failed to fetch|NetworkError|Load failed|timed out|network request failed/i.test(message);
 };
 
 const requireSupabase = () => {
@@ -240,23 +401,7 @@ const insertLearnerRow = async (client: ReturnType<typeof requireSupabase>, payl
   throw new Error('Unable to save learner after removing unsupported fields.');
 };
 
-export const fetchLearners = async (): Promise<Learner[]> => {
-  if (!supabase) return [];
-
-  const client = requireSupabase();
-  const { data, error } = await withTimeout<QueryResponse<LearnerRow[]>>(
-    Promise.resolve(client.from(LEARNERS_TABLE).select('*')) as Promise<QueryResponse<LearnerRow[]>>,
-    'Loading learners',
-  );
-
-  if (error) {
-    throw error;
-  }
-
-  return (data ?? []).map((row: LearnerRow) => rowToLearner(row));
-};
-
-export const createLearner = async (learner: Learner): Promise<Learner> => {
+const createLearnerOnServer = async (learner: Learner): Promise<Learner> => {
   const client = requireSupabase();
   const { data: authData, error: authError } = await client.auth.getUser();
 
@@ -276,7 +421,7 @@ export const createLearner = async (learner: Learner): Promise<Learner> => {
   };
 };
 
-export const updateLearner = async (learner: Learner): Promise<Learner> => {
+const updateLearnerOnServer = async (learner: Learner): Promise<Learner> => {
   const client = requireSupabase();
   const { data: authData, error: authError } = await client.auth.getUser();
 
@@ -308,7 +453,7 @@ export const updateLearner = async (learner: Learner): Promise<Learner> => {
   throw new Error('Unable to update learner after removing unsupported fields.');
 };
 
-export const deleteLearner = async (id: string): Promise<void> => {
+const deleteLearnerOnServer = async (id: string): Promise<void> => {
   const client = requireSupabase();
   const { error } = await withTimeout<QueryResponse<null>>(
     Promise.resolve(client.from(LEARNERS_TABLE).delete().eq('id', id)) as Promise<QueryResponse<null>>,
@@ -317,5 +462,186 @@ export const deleteLearner = async (id: string): Promise<void> => {
 
   if (error) {
     throw error;
+  }
+};
+
+const runPendingLearnerSync = async (): Promise<{ synced: number; failed: number }> => {
+  if (!supabase || !isOnline()) {
+    return { synced: 0, failed: 0 };
+  }
+
+  const queue = readPendingQueue();
+  if (!queue.length) {
+    return { synced: 0, failed: 0 };
+  }
+
+  let cache = readLearnerCache();
+  let synced = 0;
+  let failed = 0;
+  const remaining: PendingLearnerOperation[] = [];
+  const idAlias = new Map<string, string>();
+
+  for (let index = 0; index < queue.length; index += 1) {
+    const operation = queue[index];
+    const resolvedLearnerId = idAlias.get(operation.learnerId) ?? operation.learnerId;
+
+    try {
+      if (operation.type === 'create' && operation.learner) {
+        const created = await createLearnerOnServer({ ...operation.learner, id: resolvedLearnerId });
+        idAlias.set(operation.learnerId, created.id);
+
+        cache = cache.map((item) => (item.id === operation.learnerId ? created : item));
+        synced += 1;
+        continue;
+      }
+
+      if (operation.type === 'update' && operation.learner) {
+        const updated = await updateLearnerOnServer({ ...operation.learner, id: resolvedLearnerId });
+        cache = cache.map((item) => {
+          if (item.id === operation.learnerId || item.id === resolvedLearnerId) {
+            return { ...item, ...updated, id: updated.id };
+          }
+          return item;
+        });
+        synced += 1;
+        continue;
+      }
+
+      if (operation.type === 'delete') {
+        await deleteLearnerOnServer(resolvedLearnerId);
+        cache = cache.filter((item) => item.id !== operation.learnerId && item.id !== resolvedLearnerId);
+        synced += 1;
+      }
+    } catch (error) {
+      if (isOfflineLikeError(error)) {
+        remaining.push(operation, ...queue.slice(index + 1));
+        break;
+      }
+
+      remaining.push(operation);
+      failed += 1;
+    }
+  }
+
+  writeLearnerCache(cache);
+  writePendingQueue(remaining);
+
+  return { synced, failed };
+};
+
+export const syncPendingLearnerOperations = async (): Promise<{ synced: number; failed: number }> => {
+  if (activeSyncPromise) {
+    return activeSyncPromise;
+  }
+
+  const currentRun = runPendingLearnerSync();
+  activeSyncPromise = currentRun;
+
+  try {
+    return await currentRun;
+  } finally {
+    if (activeSyncPromise === currentRun) {
+      activeSyncPromise = null;
+    }
+  }
+};
+
+export const fetchLearners = async (): Promise<Learner[]> => {
+  const cached = readLearnerCache();
+  if (!supabase) return cached;
+
+  if (!isOnline()) {
+    return cached;
+  }
+
+  const client = requireSupabase();
+  try {
+    const { data, error } = await withTimeout<QueryResponse<LearnerRow[]>>(
+      Promise.resolve(client.from(LEARNERS_TABLE).select('*')) as Promise<QueryResponse<LearnerRow[]>>,
+      'Loading learners',
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    const learners = (data ?? []).map((row: LearnerRow) => rowToLearner(row));
+    writeLearnerCache(learners);
+    return learners;
+  } catch (error) {
+    if (isOfflineLikeError(error)) {
+      return cached;
+    }
+    throw error;
+  }
+};
+
+export const createLearner = async (learner: Learner): Promise<Learner> => {
+  const cached = readLearnerCache();
+  const nextCached = [learner, ...cached.filter((item) => item.id !== learner.id)];
+  writeLearnerCache(nextCached);
+
+  if (!supabase || !isOnline()) {
+    enqueuePendingOperation({ type: 'create', learnerId: learner.id, learner });
+    return learner;
+  }
+
+  try {
+    const saved = await createLearnerOnServer(learner);
+    const syncedCache = [saved, ...cached.filter((item) => item.id !== learner.id)];
+    writeLearnerCache(syncedCache);
+    return saved;
+  } catch (error) {
+    if (!isOfflineLikeError(error)) {
+      throw error;
+    }
+
+    enqueuePendingOperation({ type: 'create', learnerId: learner.id, learner });
+    return learner;
+  }
+};
+
+export const updateLearner = async (learner: Learner): Promise<Learner> => {
+  const cached = readLearnerCache();
+  const nextCached = cached.map((item) => (item.id === learner.id ? learner : item));
+  writeLearnerCache(nextCached);
+
+  if (!supabase || !isOnline()) {
+    enqueuePendingOperation({ type: 'update', learnerId: learner.id, learner });
+    return learner;
+  }
+
+  try {
+    const updated = await updateLearnerOnServer(learner);
+    const syncedCache = cached.map((item) => (item.id === learner.id ? updated : item));
+    writeLearnerCache(syncedCache);
+    return updated;
+  } catch (error) {
+    if (!isOfflineLikeError(error)) {
+      throw error;
+    }
+
+    enqueuePendingOperation({ type: 'update', learnerId: learner.id, learner });
+    return learner;
+  }
+};
+
+export const deleteLearner = async (id: string): Promise<void> => {
+  const cached = readLearnerCache();
+  writeLearnerCache(cached.filter((item) => item.id !== id));
+
+  if (!supabase || !isOnline()) {
+    enqueuePendingOperation({ type: 'delete', learnerId: id });
+    return;
+  }
+
+  try {
+    await deleteLearnerOnServer(id);
+  } catch (error) {
+    if (!isOfflineLikeError(error)) {
+      throw error;
+    }
+
+    enqueuePendingOperation({ type: 'delete', learnerId: id });
   }
 };

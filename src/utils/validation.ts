@@ -62,7 +62,8 @@ export const validateFamily = (d: LearnerFormData): ValidationResult => {
 export const validateLogistics = (d: LearnerFormData): ValidationResult => {
   const e: Record<string, string> = {};
   if (!d.distanceKm.trim() || Number.isNaN(Number(d.distanceKm))) e.distanceKm = 'Valid distance (km) is required';
-  if (!d.travelTime.trim()) e.travelTime = 'Travel time is required';
+  if (!d.travelTime.trim() || Number.isNaN(Number(d.travelTime))) e.travelTime = 'Valid travel time number is required';
+  if (!d.travelTimeUnit) e.travelTimeUnit = 'Travel time unit is required';
   if (!d.transportMode) e.transportMode = 'Transport mode is required';
   if (!d.preferredSessionTime) e.preferredSessionTime = 'Preferred session time is required';
   if (!d.mappedBy.trim()) e.mappedBy = 'Mapped-by name is required';

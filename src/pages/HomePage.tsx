@@ -12,6 +12,8 @@ import {
   IonList,
   IonModal,
   IonPage,
+  IonRefresher,
+  IonRefresherContent,
   IonText,
   IonTitle,
   IonToolbar
@@ -34,7 +36,7 @@ import LogoImage from '../components/LogoImage';
 import { supabase } from '../utils/supabase';
 
 const HomePage: React.FC = () => {
-  const { learners } = useAppContext();
+  const { learners, pendingSyncCount, refreshLearners } = useAppContext();
   const history = useHistory();
   const [showAbout, setShowAbout] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -163,6 +165,25 @@ const HomePage: React.FC = () => {
       </IonHeader>
 
       <IonContent style={{ '--background': '#F1F5F9' } as React.CSSProperties}>
+        <IonRefresher
+          slot="fixed"
+          onIonRefresh={async (event) => {
+            try {
+              await refreshLearners();
+            } finally {
+              event.detail.complete();
+            }
+          }}
+        >
+          <IonRefresherContent pullingText="Pull to refresh" refreshingText="Refreshing learners..." />
+        </IonRefresher>
+
+        {pendingSyncCount > 0 && (
+          <div style={s.pendingSyncBanner}>
+            {pendingSyncCount} pending learner{pendingSyncCount > 1 ? 's' : ''} to sync when online
+          </div>
+        )}
+
         <div style={s.statsRow}>
           {[
             { icon: peopleOutline, val: total, label: 'Total', color: '#1565C0' },
@@ -376,7 +397,6 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 20,
     fontWeight: 800,
     color: '#0F172A',
-    lineHeight: 1.2
   },
   aboutParagraph: {
     marginTop: 0,
@@ -384,7 +404,18 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 14,
     lineHeight: 1.7,
     color: '#334155'
-  }
+  },
+  pendingSyncBanner: {
+    margin: '12px 12px 0',
+    background: '#fff7ed',
+    color: '#9a3412',
+    border: '1px solid #fed7aa',
+    borderRadius: 12,
+    padding: '10px 12px',
+    fontSize: 12,
+    fontWeight: 700,
+    textAlign: 'center',
+  },
 };
 
 export default HomePage;

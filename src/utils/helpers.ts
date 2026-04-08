@@ -53,6 +53,7 @@ export const createEmptyFormData = (): LearnerFormData => ({
 
   distanceKm: '',
   travelTime: '',
+  travelTimeUnit: 'Minutes',
   transportMode: '',
   preferredSessionTime: '',
   dateMapped: ''
@@ -82,4 +83,26 @@ export const formatDate = (dateString: string): string => {
     month: 'short',
     day: 'numeric',
   }).format(date);
+};
+
+export const parseTravelTime = (travelTime: string): { value: string; unit: 'Hour' | 'Minutes' } => {
+  const trimmed = travelTime.trim();
+  if (!trimmed) {
+    return { value: '', unit: 'Minutes' };
+  }
+
+  const match = trimmed.match(/^([0-9]+(?:\.[0-9]+)?)\s*(hour|hours|hr|hrs|minute|minutes|min|mins)?$/i);
+  if (!match) {
+    return { value: trimmed, unit: 'Minutes' };
+  }
+
+  const suffix = (match[2] ?? '').toLowerCase();
+  const unit = suffix.startsWith('h') ? 'Hour' : 'Minutes';
+  return { value: match[1], unit };
+};
+
+export const formatTravelTime = (value: string, unit: 'Hour' | 'Minutes'): string => {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  return `${trimmed} ${unit === 'Hour' ? 'hour' : 'minutes'}`;
 };

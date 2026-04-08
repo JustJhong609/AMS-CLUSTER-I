@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
+  IonAlert,
   IonBackButton,
   IonButton,
   IonButtons,
@@ -18,6 +19,7 @@ import {
   IonToolbar,
 } from '@ionic/react';
 import { downloadOutline } from 'ionicons/icons';
+import { Capacitor } from '@capacitor/core';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, type ChartOptions } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 import * as XLSX from 'xlsx';
@@ -130,6 +132,7 @@ const AnalyticsPage: React.FC = () => {
   const [activeSection, setActiveSection] = useState<SectionKey>('municipality');
   const [downloadScope, setDownloadScope] = useState<DownloadScope>('municipality');
   const [downloadTarget, setDownloadTarget] = useState<DownloadTarget>('overall');
+  const [downloadError, setDownloadError] = useState('');
 
   const municipalityOptions = clusterCoverage.map((item) => item.municipality);
   const districtOptions = getDistrictOptions();
@@ -439,8 +442,13 @@ const AnalyticsPage: React.FC = () => {
     },
   };
 
-  const downloadExcel = (scope: ExportScope, target: DownloadTarget) => {
+  const downloadExcel = async (scope: ExportScope, target: DownloadTarget): Promise<void> => {
     const rows = buildExportRows(scope, target);
+    if (!rows.length) {
+      setDownloadError('No learner data available for the selected export range.');
+      return;
+    }
+
     const worksheet = XLSX.utils.json_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Learners');
@@ -450,7 +458,41 @@ const AnalyticsPage: React.FC = () => {
     }));
     worksheet['!cols'] = columnWidths;
 
-    XLSX.writeFile(workbook, getExportFilename(scope, target), { bookType: 'xlsx' });
+    const filename = getExportFilename(scope, target);
+
+    try {
+      // Native WebView often blocks browser-style file downloads, so share the file instead.
+      if (Capacitor.isNativePlatform() && typeof File !== 'undefined' && typeof navigator !== 'undefined') {
+        const arrayBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+        const file = new File(
+          [arrayBuffer],
+          filename,
+          { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+        );
+
+        const canShareFiles =
+          typeof navigator.canShare === 'function' &&
+          navigator.canShare({ files: [file] });
+
+        if (canShareFiles && typeof navigator.share === 'function') {
+          await navigator.share({
+            title: 'ALS Learner Export',
+            text: 'Learner analytics export',
+            files: [file],
+          });
+          return;
+        }
+      }
+
+      if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+        XLSX.writeFile(workbook, filename, { bookType: 'xlsx' });
+        return;
+      }
+
+      setDownloadError('This device does not support file download/share for Excel export yet.');
+    } catch (error) {
+      setDownloadError(error instanceof Error ? error.message : 'Unable to export Excel right now.');
+    }
   };
 
   const current = sectionData[activeSection];
@@ -607,6 +649,14 @@ const AnalyticsPage: React.FC = () => {
             </div>
           </IonCardContent>
         </IonCard>
+
+        <IonAlert
+          isOpen={!!downloadError}
+          onDidDismiss={() => setDownloadError('')}
+          header="Export Failed"
+          message={downloadError}
+          buttons={['OK']}
+        />
 
         <div style={HEADING_STYLE}>View Section</div>
         <IonCard>
