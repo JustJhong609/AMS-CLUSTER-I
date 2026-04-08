@@ -140,6 +140,21 @@ create table if not exists public.app_profiles (
   updated_at timestamptz not null default now()
 );
 
+do $$ begin
+  if exists (
+    select 1
+    from pg_constraint
+    where conname = 'app_profiles_role_check'
+      and conrelid = 'public.app_profiles'::regclass
+  ) then
+    alter table public.app_profiles drop constraint app_profiles_role_check;
+  end if;
+
+  alter table public.app_profiles
+    add constraint app_profiles_role_check
+    check (role in ('mapper', 'admin'));
+end $$;
+
 -- ---------- LEARNERS TABLE (ALIGNED WITH FRONTEND PAYLOAD) ----------
 drop table if exists public.learners cascade;
 
@@ -372,6 +387,9 @@ create policy profiles_update_own
   to authenticated
   using (id = auth.uid())
   with check (id = auth.uid());
+
+drop policy if exists profiles_select_superadmin on public.app_profiles;
+drop policy if exists profiles_update_superadmin on public.app_profiles;
 
 drop policy if exists learners_select_auth on public.learners;
 create policy learners_select_auth

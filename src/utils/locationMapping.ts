@@ -35,6 +35,13 @@ export const getMunicipalityByBarangay = (barangay: string): MunicipalityKey | u
   return clusterCoverage.find((item) => item.barangays.includes(canonical))?.municipality;
 };
 
+export const getMunicipalityByDistrict = (district: string): MunicipalityKey | undefined => {
+  if (!district) return undefined;
+
+  const normalizedDistrict = normalizeText(district);
+  return districtCoverage.find((item) => normalizeText(item.district) === normalizedDistrict)?.municipality;
+};
+
 export const getDistrictByBarangay = (barangay: string, municipality?: MunicipalityKey | ''): string | undefined => {
   const canonical = canonicalizeBarangay(barangay);
   const pool = municipality

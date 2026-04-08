@@ -26,7 +26,7 @@ const SignInPage: React.FC = () => {
         throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY or SUPABASE_URL/SUPABASE_ANON_KEY to your environment.');
       }
 
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
@@ -35,7 +35,7 @@ const SignInPage: React.FC = () => {
         throw signInError;
       }
 
-      history.replace('/home');
+      history.replace('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to sign in right now. Please try again.');
     } finally {

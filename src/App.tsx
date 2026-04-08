@@ -82,10 +82,11 @@ const App: React.FC = () => {
 
         const { data: sessionData } = await supabase.auth.getSession();
         const hasSession = Boolean(sessionData.session);
+        const userId = resolveUserId(sessionData.session);
         if (mounted) {
           setIsLoggedIn(hasSession);
           setCurrentUserName(resolveUserName(sessionData.session));
-          setCurrentUserId(resolveUserId(sessionData.session));
+          setCurrentUserId(userId);
         }
 
         if (hasSession) {
@@ -102,9 +103,10 @@ const App: React.FC = () => {
           if (!mounted) return;
 
           const loggedIn = Boolean(session);
+          const userId = resolveUserId(session);
           setIsLoggedIn(loggedIn);
           setCurrentUserName(resolveUserName(session));
-          setCurrentUserId(resolveUserId(session));
+          setCurrentUserId(userId);
 
           if (!loggedIn) {
             setLearners([]);
