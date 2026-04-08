@@ -7,6 +7,7 @@ import LandingPage from './pages/LandingPage';
 import SignInPage from './pages/SignInPage';
 import SignUpPage from './pages/SignUpPage';
 import HomePage from './pages/HomePage';
+import SuperAdminPage from './pages/SuperAdminPage';
 import LearnerListPage from './pages/LearnerListPage';
 import LearnerFormPage from './pages/LearnerFormPage';
 import AnalyticsPage from './pages/AnalyticsPage';
@@ -22,6 +23,9 @@ const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUserName, setCurrentUserName] = useState('');
   const [currentUserId, setCurrentUserId] = useState('');
+  const [currentUserRole, setCurrentUserRole] = useState('mapper');
+
+  const getPostAuthPath = (role: string): string => (role === 'superadmin' ? '/superadmin' : '/home');
 
   const resolveUserName = (session: unknown): string => {
     const candidate = session as {
@@ -54,6 +58,23 @@ const App: React.FC = () => {
     return candidate?.user?.id ?? '';
   };
 
+  const fetchCurrentUserRole = async (userId: string): Promise<string> => {
+    if (!supabase || !userId) return 'mapper';
+
+    const { data, error } = await supabase
+      .from('app_profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error || !data?.role || typeof data.role !== 'string') {
+      return 'mapper';
+    }
+
+    const normalized = data.role.trim().toLowerCase();
+    return normalized === 'superadmin' ? 'superadmin' : normalized === 'admin' ? 'admin' : 'mapper';
+  };
+
   useEffect(() => {
     let mounted = true;
     let bootstrapSettled = false;
@@ -82,10 +103,13 @@ const App: React.FC = () => {
 
         const { data: sessionData } = await supabase.auth.getSession();
         const hasSession = Boolean(sessionData.session);
+        const userId = resolveUserId(sessionData.session);
+        const role = hasSession ? await fetchCurrentUserRole(userId) : 'mapper';
         if (mounted) {
           setIsLoggedIn(hasSession);
           setCurrentUserName(resolveUserName(sessionData.session));
-          setCurrentUserId(resolveUserId(sessionData.session));
+          setCurrentUserId(userId);
+          setCurrentUserRole(role);
         }
 
         if (hasSession) {
@@ -98,26 +122,34 @@ const App: React.FC = () => {
             });
         }
 
-        const { data: listener } = supabase.auth.onAuthStateChange((_event: unknown, session: unknown) => {
+        const { data: listener } = supabase.auth.onAuthStateChange(async (_event: unknown, session: unknown) => {
           if (!mounted) return;
 
+          setLoading(true);
           const loggedIn = Boolean(session);
-          setIsLoggedIn(loggedIn);
+          const userId = resolveUserId(session);
           setCurrentUserName(resolveUserName(session));
-          setCurrentUserId(resolveUserId(session));
+          setCurrentUserId(userId);
 
           if (!loggedIn) {
+            setIsLoggedIn(false);
             setLearners([]);
+            setCurrentUserRole('mapper');
+            setLoading(false);
             return;
           }
 
-          void fetchLearners()
-            .then((data) => {
-              if (mounted) setLearners(data);
-            })
-            .catch(() => {
-              // Ignore local cache errors from background refresh.
-            });
+          try {
+            const role = await fetchCurrentUserRole(userId);
+            if (!mounted) return;
+            setCurrentUserRole(role);
+            setIsLoggedIn(true);
+
+            const data = await fetchLearners().catch(() => [] as Learner[]);
+            if (mounted) setLearners(data);
+          } finally {
+            if (mounted) setLoading(false);
+          }
         });
         activeAuthSubscription = listener.subscription;
       } catch {
@@ -137,29 +169,30 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <AppProvider value={{ learners, setLearners, currentUserName, currentUserId }}>
+    <AppProvider value={{ learners, setLearners, currentUserName, currentUserId, currentUserRole }}>
       <IonLoading isOpen={loading} message="Please wait..." spinner="crescent" />
       {!loading && (
         <IonReactRouter>
           <Switch>
             <Route exact path="/">
-              {isLoggedIn ? <Redirect to="/home" /> : <LandingPage />}
+              {isLoggedIn ? <Redirect to={getPostAuthPath(currentUserRole)} /> : <LandingPage />}
             </Route>
 
             {/* Auth routes */}
-            <Route exact path="/landing" render={() => (isLoggedIn ? <Redirect to="/home" /> : <LandingPage />)} />
-            <Route exact path="/sign-in" render={() => (isLoggedIn ? <Redirect to="/home" /> : <SignInPage />)} />
-            <Route exact path="/sign-up" render={() => (isLoggedIn ? <Redirect to="/home" /> : <SignUpPage />)} />
+            <Route exact path="/landing" render={() => (isLoggedIn ? <Redirect to={getPostAuthPath(currentUserRole)} /> : <LandingPage />)} />
+            <Route exact path="/sign-in" render={() => (isLoggedIn ? <Redirect to={getPostAuthPath(currentUserRole)} /> : <SignInPage />)} />
+            <Route exact path="/sign-up" render={() => (isLoggedIn ? <Redirect to={getPostAuthPath(currentUserRole)} /> : <SignUpPage />)} />
 
             {/* App routes */}
-            <Route exact path="/home" render={() => (isLoggedIn ? <HomePage /> : <Redirect to="/sign-in" />)} />
-            <Route exact path="/learners" render={() => (isLoggedIn ? <LearnerListPage /> : <Redirect to="/sign-in" />)} />
-            <Route exact path="/learners/new" render={() => (isLoggedIn ? <LearnerFormPage /> : <Redirect to="/sign-in" />)} />
-            <Route exact path="/learners/:id/edit" render={() => (isLoggedIn ? <LearnerFormPage /> : <Redirect to="/sign-in" />)} />
-            <Route exact path="/analytics" render={() => (isLoggedIn ? <AnalyticsPage /> : <Redirect to="/sign-in" />)} />
+            <Route exact path="/home" render={() => (isLoggedIn ? (currentUserRole === 'superadmin' ? <Redirect to="/superadmin" /> : <HomePage />) : <Redirect to="/sign-in" />)} />
+            <Route exact path="/superadmin" render={() => (isLoggedIn ? (currentUserRole === 'superadmin' ? <SuperAdminPage /> : <Redirect to="/home" />) : <Redirect to="/sign-in" />)} />
+            <Route exact path="/learners" render={() => (isLoggedIn ? (currentUserRole === 'superadmin' ? <Redirect to="/superadmin" /> : <LearnerListPage />) : <Redirect to="/sign-in" />)} />
+            <Route exact path="/learners/new" render={() => (isLoggedIn ? (currentUserRole === 'superadmin' ? <Redirect to="/superadmin" /> : <LearnerFormPage />) : <Redirect to="/sign-in" />)} />
+            <Route exact path="/learners/:id/edit" render={() => (isLoggedIn ? (currentUserRole === 'superadmin' ? <Redirect to="/superadmin" /> : <LearnerFormPage />) : <Redirect to="/sign-in" />)} />
+            <Route exact path="/analytics" render={() => (isLoggedIn ? (currentUserRole === 'superadmin' ? <Redirect to="/superadmin" /> : <AnalyticsPage />) : <Redirect to="/sign-in" />)} />
 
             {/* Default redirect */}
-            <Redirect to={isLoggedIn ? '/home' : '/landing'} />
+            <Redirect to={isLoggedIn ? getPostAuthPath(currentUserRole) : '/landing'} />
           </Switch>
         </IonReactRouter>
       )}

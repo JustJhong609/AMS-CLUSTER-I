@@ -20,20 +20,21 @@ import {
 import { downloadOutline } from 'ionicons/icons';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, type ChartOptions } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import { useAppContext } from '../context/AppContext';
 import { clusterCoverage } from '../data/clusterCoverage';
 import { BARANGAY_OPTIONS } from '../utils/constants';
 import { formatDate } from '../utils/helpers';
-import { getDistrictByBarangay, getDistrictOptions, getMunicipalityByBarangay } from '../utils/locationMapping';
+import { getDistrictByBarangay, getDistrictOptions, getMunicipalityByBarangay, getMunicipalityByDistrict } from '../utils/locationMapping';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 type ChartDatum = { label: string; value: number; color: string };
 type SectionKey = 'municipality' | 'district' | 'barangay' | 'overallElementary' | 'overallJhs' | 'overallBlp';
 
-type DownloadScope = 'overall' | 'municipality' | 'district' | 'barangay';
+type DownloadScope = 'municipality' | 'district' | 'barangay';
+type DownloadTarget = 'overall' | string;
+type ExportTargetOption = { label: string; value: string };
 
 const isJhsGradeCompleted = (grade?: string): boolean => Boolean(
   grade?.includes('1st Year HS') ||
@@ -42,23 +43,8 @@ const isJhsGradeCompleted = (grade?: string): boolean => Boolean(
   grade?.includes('4th Year HS')
 );
 
-type ReportRow = {
-  firstName: string;
-  lastName: string;
-  middleName: string;
-  sex: 'Male' | 'Female';
-  age: number;
-  barangay: string;
-  civilStatus: string;
-  isBlp: boolean;
-  lastGradeCompleted: string;
-  schoolName: string;
-  is4PsMember: boolean;
-  isIP: boolean;
-  isPwd: boolean;
-  pwdType: string;
-  dateMapped: string;
-};
+type ExportScope = DownloadScope;
+type ExportRow = Record<string, string | number | boolean>;
 
 const HEADING_STYLE: React.CSSProperties = {
   fontSize: 14,
@@ -142,58 +128,12 @@ const PiePane: React.FC<{ title: string; data: ChartDatum[] }> = ({ title, data 
 const AnalyticsPage: React.FC = () => {
   const { learners } = useAppContext();
   const [activeSection, setActiveSection] = useState<SectionKey>('municipality');
-  const [downloadScope, setDownloadScope] = useState<DownloadScope>('overall');
+  const [downloadScope, setDownloadScope] = useState<DownloadScope>('municipality');
+  const [downloadTarget, setDownloadTarget] = useState<DownloadTarget>('overall');
 
   const municipalityOptions = clusterCoverage.map((item) => item.municipality);
   const districtOptions = getDistrictOptions();
   const allBarangays = clusterCoverage.flatMap((item) => item.barangays);
-
-  const barangayToMunicipality = clusterCoverage.reduce<Record<string, string>>((acc, item) => {
-    item.barangays.forEach((barangay) => {
-      acc[barangay] = item.municipality;
-    });
-    return acc;
-  }, {});
-
-  const filteredExportRows = useMemo(() => {
-    return learners.map((learner) => ({
-      firstName: learner.firstName,
-      lastName: learner.lastName,
-      middleName: learner.middleName,
-      sex: learner.sex,
-      age: learner.age,
-      barangay: learner.barangay,
-      civilStatus: learner.civilStatus,
-      isBlp: learner.isBlp,
-      lastGradeCompleted: learner.lastGradeCompleted,
-      schoolName: learner.schoolName || '',
-      is4PsMember: learner.is4PsMember,
-      isIP: learner.isIP,
-      isPwd: learner.isPwd,
-      pwdType: learner.pwdType || '',
-      dateMapped: learner.dateMapped,
-    }));
-  }, [learners]);
-
-  const reportRows = useMemo<ReportRow[]>(() => {
-    return learners.map((l) => ({
-      firstName: l.firstName,
-      lastName: l.lastName,
-      middleName: l.middleName,
-      sex: l.sex,
-      age: l.age,
-      barangay: l.barangay,
-      civilStatus: l.civilStatus,
-      isBlp: l.isBlp,
-      lastGradeCompleted: l.lastGradeCompleted,
-      schoolName: l.schoolName || '',
-      is4PsMember: l.is4PsMember,
-      isIP: l.isIP,
-      isPwd: l.isPwd,
-      pwdType: l.pwdType || '',
-      dateMapped: l.dateMapped,
-    }));
-  }, [learners]);
 
   const stats = useMemo(() => {
     let total = 0;
@@ -292,8 +232,143 @@ const AnalyticsPage: React.FC = () => {
     Malitbog: '#7c3aed',
   };
 
-  const getLearnerMunicipality = (learner: { barangay: string; municipality?: string }) => learner.municipality || barangayToMunicipality[learner.barangay] || getMunicipalityByBarangay(learner.barangay) || 'Unknown';
-  const getLearnerDistrict = (learner: { barangay: string; municipality?: string; learnerDistrict?: string }) => learner.learnerDistrict || getDistrictByBarangay(learner.barangay, getLearnerMunicipality(learner) as any) || 'Unknown';
+  const getLearnerMunicipality = (learner: { barangay: string; municipality?: string; learnerDistrict?: string }) =>
+    learner.municipality ||
+    (learner.learnerDistrict ? getMunicipalityByDistrict(learner.learnerDistrict) : undefined) ||
+    getMunicipalityByBarangay(learner.barangay) ||
+    'Unknown';
+
+  const getLearnerDistrict = (learner: { barangay: string; municipality?: string; learnerDistrict?: string }) =>
+    learner.learnerDistrict ||
+    getDistrictByBarangay(learner.barangay, getLearnerMunicipality(learner) as any) ||
+    'Unknown';
+
+  const getExportScopeLabel = (scope: ExportScope): string => {
+    if (scope === 'municipality') return 'Municipality';
+    if (scope === 'district') return 'District';
+    return 'Barangay';
+  };
+
+  const getExportScopeValue = (learner: typeof learners[number], scope: ExportScope): string => {
+    if (scope === 'municipality') return getLearnerMunicipality(learner);
+    if (scope === 'district') return getLearnerDistrict(learner);
+    return `${learner.barangay || 'Unknown'} (${getLearnerMunicipality(learner)})`;
+  };
+
+  const getExportTargetKey = (learner: typeof learners[number], scope: ExportScope): string => {
+    if (scope === 'municipality') return getLearnerMunicipality(learner);
+    if (scope === 'district') return getLearnerDistrict(learner);
+    return `${getLearnerMunicipality(learner)}::${learner.barangay}`;
+  };
+
+  const getExportTargetOptions = (scope: DownloadScope): ExportTargetOption[] => {
+    if (scope === 'municipality') {
+      return municipalityOptions.map((municipality) => ({ label: municipality, value: municipality }));
+    }
+
+    if (scope === 'district') {
+      return districtOptions.map((district) => ({ label: district, value: district }));
+    }
+
+    const barangayCounts = learners.reduce<Record<string, number>>((acc, learner) => {
+      const key = learner.barangay || 'Unknown';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    return clusterCoverage.flatMap((item) =>
+      item.barangays.map((barangay) => ({
+        label: barangayCounts[barangay] > 1 ? `${barangay} (${item.municipality})` : barangay,
+        value: `${item.municipality}::${barangay}`,
+      })),
+    );
+  };
+
+  const getExportFilename = (scope: DownloadScope, target: DownloadTarget): string => {
+    const safeScope = scope.replace(/\s+/g, '-').toLowerCase();
+    if (target === 'overall') return `als-learners-by-${safeScope}-overall.xlsx`;
+    const safeTarget = target.replace(/::/g, '-').replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+    return `als-learners-by-${safeScope}-${safeTarget}.xlsx`;
+  };
+
+  const buildExportRows = (scope: ExportScope, target: DownloadTarget): ExportRow[] => {
+    const filteredLearners = target === 'overall'
+      ? learners
+      : learners.filter((learner) => getExportTargetKey(learner, scope) === target);
+
+    return [...filteredLearners]
+      .map((learner) => {
+        const municipality = getLearnerMunicipality(learner);
+        const district = getLearnerDistrict(learner);
+        const scopeValue = getExportScopeValue(learner, scope);
+
+        return {
+          'Scope Type': getExportScopeLabel(scope),
+          'Scope Value': scopeValue,
+          Region: learner.region,
+          Division: learner.division,
+          District: learner.district,
+          'Calendar Year': learner.calendarYear,
+          'Mapped By': learner.mappedBy,
+          'Last Name': learner.lastName,
+          'First Name': learner.firstName,
+          'Middle Name': learner.middleName,
+          'Name Extension': learner.nameExtension || '',
+          Sex: learner.sex,
+          'Civil Status': learner.civilStatus,
+          Birthdate: learner.birthdate,
+          Age: learner.age,
+          'Mother Tongue': learner.motherTongue,
+          'Is IP': learner.isIP ? 'Yes' : 'No',
+          'IP Tribe': learner.ipTribe || '',
+          Religion: learner.religion || '',
+          'Is 4Ps Member': learner.is4PsMember ? 'Yes' : 'No',
+          '4Ps or IP': learner.fourPsOrIp || '',
+          'Is PWD': learner.isPwd ? 'Yes' : 'No',
+          'PWD Type': learner.pwdType || '',
+          'PWD Type Other': learner.pwdTypeOther || '',
+          Municipality: municipality,
+          'Learner District': district,
+          Barangay: learner.barangay,
+          'Complete Address': learner.completeAddress,
+          'Role in Family': learner.roleInFamily,
+          'Father Name': learner.fatherName || '',
+          'Mother Name': learner.motherName || '',
+          'Guardian Name': learner.guardianName || '',
+          'Guardian Occupation': learner.guardianOccupation || '',
+          'School Name': learner.schoolName || '',
+          'Currently Studying': learner.currentlyStudying,
+          'Last Grade Completed': learner.lastGradeCompleted,
+          'Reason For Not Attending': learner.reasonForNotAttending,
+          'Reason For Not Attending Other': learner.reasonForNotAttendingOther || '',
+          'Is BLP': learner.isBlp ? 'Yes' : 'No',
+          'Occupation Type': learner.occupationType || '',
+          'Employment Status': learner.employmentStatus || '',
+          'Monthly Income': learner.monthlyIncome || '',
+          'Interested In ALS': learner.interestedInALS,
+          'Contact Number': learner.contactNumber || '',
+          'Distance (km)': learner.distanceKm,
+          'Travel Time': learner.travelTime,
+          'Transport Mode': learner.transportMode,
+          'Preferred Session Time': learner.preferredSessionTime,
+          'Date Mapped': formatDate(learner.dateMapped),
+        };
+      })
+      .sort((left, right) => {
+        if (target !== 'overall') {
+          const leftName = `${String(left['Last Name'])} ${String(left['First Name'])}`;
+          const rightName = `${String(right['Last Name'])} ${String(right['First Name'])}`;
+          return leftName.localeCompare(rightName);
+        }
+
+        const leftGroup = String(left['Scope Value']);
+        const rightGroup = String(right['Scope Value']);
+        if (leftGroup !== rightGroup) return leftGroup.localeCompare(rightGroup);
+        const leftName = `${String(left['Last Name'])} ${String(left['First Name'])}`;
+        const rightName = `${String(right['Last Name'])} ${String(right['First Name'])}`;
+        return leftName.localeCompare(rightName);
+      });
+  };
 
   const overallByMunicipality = (predicate: (learner: typeof learners[number]) => boolean = () => true) => {
     const counts: Record<string, number> = {};
@@ -364,214 +439,18 @@ const AnalyticsPage: React.FC = () => {
     },
   };
 
-  const downloadPDF = (scope: DownloadScope, rows: ReportRow[]) => {
-    const doc = new jsPDF({ orientation: 'landscape' });
-    const title = 'ALS Learner Analytics Report';
-    const subtitle = `Generated: ${new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}`;
+  const downloadExcel = (scope: ExportScope, target: DownloadTarget) => {
+    const rows = buildExportRows(scope, target);
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Learners');
 
-    const summaryStats = rows.reduce(
-      (acc, row) => {
-        acc.total += 1;
-        if (row.sex === 'Male') acc.male += 1;
-        if (row.sex === 'Female') acc.female += 1;
-        if (row.is4PsMember) acc.fourPs += 1;
-        if (row.isIP) acc.ip += 1;
-        if (row.isPwd) acc.pwd += 1;
-        if (row.isBlp) acc.blp += 1;
-        else if (row.lastGradeCompleted === 'G1 – G6 (Elementary)') acc.elementary += 1;
-        else if (isJhsGradeCompleted(row.lastGradeCompleted)) {
-          acc.jhs += 1;
-        }
-        if (row.age <= 24) acc.youth += 1;
-        else if (row.age <= 59) acc.adult += 1;
-        else acc.senior += 1;
-        return acc;
-      },
-      {
-        total: 0,
-        male: 0,
-        female: 0,
-        fourPs: 0,
-        ip: 0,
-        pwd: 0,
-        blp: 0,
-        elementary: 0,
-        jhs: 0,
-        youth: 0,
-        adult: 0,
-        senior: 0,
-      },
-    );
+    const columnWidths = Object.keys(rows[0] ?? { 'Scope Type': '', 'Scope Value': '' }).map((header) => ({
+      wch: Math.max(header.length, ...rows.map((row) => String(row[header] ?? '').length), 12),
+    }));
+    worksheet['!cols'] = columnWidths;
 
-    const addHeader = () => {
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.text(title, 14, 16);
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.text(subtitle, 14, 23);
-    };
-
-    if (scope === 'municipality') {
-      addHeader();
-      const grouped: Record<string, ReportRow[]> = {};
-      rows.forEach((row) => {
-        const municipality = barangayToMunicipality[row.barangay] ?? 'Unknown';
-        if (!grouped[municipality]) grouped[municipality] = [];
-        grouped[municipality].push(row);
-      });
-
-      let y = 28;
-      municipalityOptions.forEach((municipality) => {
-        const list = grouped[municipality] ?? [];
-        if (y > 170) {
-          doc.addPage();
-          y = 14;
-        }
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${municipality} (${list.length} learners)`, 14, y);
-        y += 3;
-        autoTable(doc, {
-          startY: y,
-          head: [['Barangay', 'Total Learners']],
-          body: clusterCoverage
-            .find((item) => item.municipality === municipality)
-            ?.barangays.map((barangay) => [barangay, rows.filter((row) => row.barangay === barangay).length]) ?? [],
-          styles: { fontSize: 8 },
-          headStyles: { fillColor: [21, 101, 192] },
-          margin: { top: 28 },
-        });
-        y = (doc as any).lastAutoTable.finalY + 8;
-      });
-      doc.save('als-learners-by-municipality.pdf');
-      return;
-    }
-
-    if (scope === 'barangay') {
-      addHeader();
-      const grouped: Record<string, ReportRow[]> = {};
-      rows.forEach((row) => {
-        if (!grouped[row.barangay]) grouped[row.barangay] = [];
-        grouped[row.barangay].push(row);
-      });
-
-      let y = 28;
-      BARANGAY_OPTIONS.forEach((barangay) => {
-        const list = grouped[barangay] ?? [];
-        if (y > 170) {
-          doc.addPage();
-          y = 14;
-        }
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${barangay} (${list.length} learners)`, 14, y);
-        y += 3;
-        autoTable(doc, {
-          startY: y,
-          head: [['Full Name', 'Sex', 'Age', 'Municipality', 'Date Mapped']],
-          body: list.map((row) => [
-            `${row.lastName}, ${row.firstName}`,
-            row.sex,
-            row.age,
-            barangayToMunicipality[row.barangay] ?? 'Unknown',
-            formatDate(row.dateMapped),
-          ]),
-          styles: { fontSize: 7 },
-          headStyles: { fillColor: [0, 137, 123] },
-          margin: { top: 28 },
-        });
-        y = (doc as any).lastAutoTable.finalY + 8;
-      });
-      doc.save('als-learners-by-barangay.pdf');
-      return;
-    }
-
-    if (scope === 'district') {
-      addHeader();
-      const grouped: Record<string, ReportRow[]> = {};
-      rows.forEach((row) => {
-        const municipality = barangayToMunicipality[row.barangay] ?? getMunicipalityByBarangay(row.barangay) ?? '';
-        const district = getDistrictByBarangay(row.barangay, municipality as any) ?? 'Unknown';
-        if (!grouped[district]) grouped[district] = [];
-        grouped[district].push(row);
-      });
-
-      let y = 28;
-      districtOptions.forEach((district) => {
-        const list = grouped[district] ?? [];
-        if (y > 170) {
-          doc.addPage();
-          y = 14;
-        }
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${district} (${list.length} learners)`, 14, y);
-        y += 3;
-        const districtRows = Object.entries(
-          list.reduce<Record<string, { municipality: string; count: number }>>((acc, row) => {
-            const municipality = barangayToMunicipality[row.barangay] ?? getMunicipalityByBarangay(row.barangay) ?? 'Unknown';
-            const key = row.barangay;
-            if (!acc[key]) acc[key] = { municipality, count: 0 };
-            acc[key].count += 1;
-            return acc;
-          }, {}),
-        ).map(([barangay, value]) => [barangay, value.municipality, value.count]);
-        autoTable(doc, {
-          startY: y,
-          head: [['Barangay', 'Municipality', 'Learners']],
-          body: districtRows,
-          styles: { fontSize: 8 },
-          headStyles: { fillColor: [76, 29, 149] },
-          margin: { top: 28 },
-        });
-        y = (doc as any).lastAutoTable.finalY + 8;
-      });
-      doc.save('als-learners-by-district.pdf');
-      return;
-    }
-
-    if (scope === 'overall') {
-      addHeader();
-      const overallStats = rows.reduce(
-        (acc, row) => {
-          acc.total += 1;
-          if (row.sex === 'Male') acc.male += 1;
-          if (row.sex === 'Female') acc.female += 1;
-          if (row.is4PsMember) acc.fourPs += 1;
-          if (row.isIP) acc.ip += 1;
-          if (row.isPwd) acc.pwd += 1;
-          if (row.isBlp) acc.blp += 1;
-          else if (row.lastGradeCompleted === 'G1 – G6 (Elementary)') acc.elementary += 1;
-          else if (isJhsGradeCompleted(row.lastGradeCompleted)) {
-            acc.jhs += 1;
-          }
-          return acc;
-        },
-        { total: 0, male: 0, female: 0, fourPs: 0, ip: 0, pwd: 0, blp: 0, elementary: 0, jhs: 0 },
-      );
-
-      autoTable(doc, {
-        startY: 28,
-        head: [['Category', 'Value']],
-        body: [
-          ['Total Learners', overallStats.total],
-          ['Male', overallStats.male],
-          ['Female', overallStats.female],
-          ["4Ps Members", overallStats.fourPs],
-          ['IP', overallStats.ip],
-          ['PWD', overallStats.pwd],
-          ['Elementary', overallStats.elementary],
-          ['JHS', overallStats.jhs],
-          ['BLP', overallStats.blp],
-        ],
-        styles: { fontSize: 10 },
-        headStyles: { fillColor: [21, 101, 192] },
-        columnStyles: { 1: { halign: 'center', fontStyle: 'bold' } },
-      });
-      doc.save('als-analytics-summary.pdf');
-      return;
-    }
+    XLSX.writeFile(workbook, getExportFilename(scope, target), { bookType: 'xlsx' });
   };
 
   const current = sectionData[activeSection];
@@ -681,26 +560,49 @@ const AnalyticsPage: React.FC = () => {
           }
         `}</style>
 
-        <div style={HEADING_STYLE}>Download PDF Reports</div>
+        <div style={HEADING_STYLE}>Download Excel Reports</div>
         <IonCard>
           <IonCardContent>
-            <IonItem lines="none" style={{ '--background': '#F8FAFC', borderRadius: 12 } as React.CSSProperties}>
-              <IonLabel position="stacked">Download Scope</IonLabel>
-              <IonSelect
-                value={downloadScope}
-                interface="popover"
-                onIonChange={(e) => setDownloadScope(e.detail.value as DownloadScope)}
-              >
-                <IonSelectOption value="overall">Overall</IonSelectOption>
-                <IonSelectOption value="municipality">Municipality</IonSelectOption>
-                <IonSelectOption value="district">District</IonSelectOption>
-                <IonSelectOption value="barangay">Barangay</IonSelectOption>
-              </IonSelect>
-            </IonItem>
+            <div style={{ display: 'grid', gap: 12 }}>
+              <IonItem lines="none" style={{ '--background': '#F8FAFC', borderRadius: 12 } as React.CSSProperties}>
+                <IonLabel position="stacked">Download By</IonLabel>
+                <IonSelect
+                  value={downloadScope}
+                  interface="popover"
+                  onIonChange={(e) => {
+                    const scope = e.detail.value as DownloadScope;
+                    setDownloadScope(scope);
+                    setDownloadTarget('overall');
+                  }}
+                >
+                  <IonSelectOption value="municipality">By Municipality</IonSelectOption>
+                  <IonSelectOption value="district">By District</IonSelectOption>
+                  <IonSelectOption value="barangay">By Barangay</IonSelectOption>
+                </IonSelect>
+              </IonItem>
+
+              <IonItem lines="none" style={{ '--background': '#F8FAFC', borderRadius: 12 } as React.CSSProperties}>
+                <IonLabel position="stacked">
+                  {downloadTarget === 'overall' ? 'Export Range' : `Selected ${getExportScopeLabel(downloadScope)}`}
+                </IonLabel>
+                <IonSelect
+                  value={downloadTarget}
+                  interface="popover"
+                  onIonChange={(e) => setDownloadTarget(e.detail.value as DownloadTarget)}
+                >
+                  <IonSelectOption value="overall">Overall</IonSelectOption>
+                  {getExportTargetOptions(downloadScope).map((option) => (
+                    <IonSelectOption key={option.value} value={option.value}>
+                      {option.label}
+                    </IonSelectOption>
+                  ))}
+                </IonSelect>
+              </IonItem>
+            </div>
             <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
-              <IonButton onClick={() => downloadPDF(downloadScope, filteredExportRows)} style={{ '--border-radius': '14px' } as React.CSSProperties}>
+              <IonButton onClick={() => downloadExcel(downloadScope, downloadTarget)} style={{ '--border-radius': '14px' } as React.CSSProperties}>
                 <IonIcon slot="start" icon={downloadOutline} />
-                Download PDF
+                Download Excel
               </IonButton>
             </div>
           </IonCardContent>

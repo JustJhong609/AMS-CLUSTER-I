@@ -30,7 +30,7 @@ import { DISTRICT } from '../utils/constants';
 import { deleteLearner, fetchLearners } from '../utils/learnerApi';
 import { Learner } from '../types';
 import { formatDate } from '../utils/helpers';
-import { formatDistrictLabel, getDistrictByBarangay, getDistrictOptions, getMunicipalityByBarangay } from '../utils/locationMapping';
+import { formatDistrictLabel, getDistrictByBarangay, getDistrictOptions, getMunicipalityByBarangay, getMunicipalityByDistrict } from '../utils/locationMapping';
 
 const LearnerListPage: React.FC = () => {
   const { learners, setLearners, currentUserId } = useAppContext();
@@ -70,21 +70,23 @@ const LearnerListPage: React.FC = () => {
     ? municipalityBarangays.filter((barangay) => getDistrictByBarangay(barangay, filterMunicipality as any) === filterDistrict)
     : municipalityBarangays;
 
-  const barangayToMunicipality = clusterCoverage.reduce<Record<string, string>>((acc, item) => {
-    item.barangays.forEach((barangay) => {
-      acc[barangay] = item.municipality;
-    });
-    return acc;
-  }, {});
-
   const activeFilterCount = Number(Boolean(filterMunicipality)) + Number(Boolean(filterDistrict)) + Number(Boolean(filterBarangay));
+
+  const getLearnerMunicipality = (learner: { barangay: string; municipality?: string; learnerDistrict?: string }) =>
+    learner.municipality ||
+    (learner.learnerDistrict ? getMunicipalityByDistrict(learner.learnerDistrict) : undefined) ||
+    getMunicipalityByBarangay(learner.barangay) ||
+    '';
+
+  const getLearnerDistrict = (learner: { barangay: string; municipality?: string; learnerDistrict?: string }) =>
+    learner.learnerDistrict || getDistrictByBarangay(learner.barangay, getLearnerMunicipality(learner) as any) || '';
 
   const filtered = learners.filter((l) => {
     const q = query.toLowerCase();
     const textMatch = l.firstName.toLowerCase().includes(q) || l.lastName.toLowerCase().includes(q) || l.middleName.toLowerCase().includes(q);
     if (!textMatch) return false;
-    const learnerMunicipality = l.municipality || barangayToMunicipality[l.barangay] || getMunicipalityByBarangay(l.barangay) || '';
-    const learnerDistrict = l.learnerDistrict || getDistrictByBarangay(l.barangay, learnerMunicipality as any) || '';
+    const learnerMunicipality = getLearnerMunicipality(l);
+    const learnerDistrict = getLearnerDistrict(l);
     if (filterMunicipality && learnerMunicipality !== filterMunicipality) return false;
     if (filterDistrict && learnerDistrict !== filterDistrict) return false;
     if (filterBarangay && l.barangay !== filterBarangay) return false;
@@ -158,8 +160,8 @@ const LearnerListPage: React.FC = () => {
         title: 'Address',
         icon: homeOutline,
         rows: [
-          ['Municipality', selectedLearner.municipality || barangayToMunicipality[selectedLearner.barangay] || 'N/A'],
-          ['District', formatDistrictLabel(selectedLearner.learnerDistrict || getDistrictByBarangay(selectedLearner.barangay, selectedLearner.municipality) || 'N/A')],
+          ['Municipality', getLearnerMunicipality(selectedLearner) || 'N/A'],
+          ['District', formatDistrictLabel(getLearnerDistrict(selectedLearner) || 'N/A')],
           ['Barangay', selectedLearner.barangay],
           ['Complete Address', selectedLearner.completeAddress],
         ],
