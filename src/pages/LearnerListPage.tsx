@@ -31,7 +31,7 @@ import { clusterCoverage } from '../data/clusterCoverage';
 import { DISTRICT } from '../utils/constants';
 import { deleteLearner, fetchLearners } from '../utils/learnerApi';
 import { Learner } from '../types';
-import { formatDate } from '../utils/helpers';
+import { formatDate, formatStructuredText } from '../utils/helpers';
 import { formatDistrictLabel, getDistrictByBarangay, getDistrictOptions, getMunicipalityByBarangay, getMunicipalityByDistrict } from '../utils/locationMapping';
 
 const LearnerListPage: React.FC = () => {
@@ -96,6 +96,7 @@ const LearnerListPage: React.FC = () => {
   });
 
   const initials = (first: string, last: string) => `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
+  const displayText = (value?: string | null): string => formatStructuredText(value ?? '') || 'N/A';
 
   const handleDelete = async (target: Learner) => {
     if (isDeleting) return;
@@ -122,75 +123,75 @@ const LearnerListPage: React.FC = () => {
           ['Division', selectedLearner.division],
           ['District', selectedLearner.district],
           ['Calendar Year', String(selectedLearner.calendarYear)],
-          ['Mapped By', selectedLearner.mappedBy],
+          ['Mapped By', displayText(selectedLearner.mappedBy)],
         ],
       },
       {
         title: 'Personal Information',
         icon: personCircleOutline,
         rows: [
-          ['Last Name', selectedLearner.lastName],
-          ['First Name', selectedLearner.firstName],
-          ['Middle Name', selectedLearner.middleName],
-          ['Name Extension', selectedLearner.nameExtension || 'N/A'],
+          ['Last Name', displayText(selectedLearner.lastName)],
+          ['First Name', displayText(selectedLearner.firstName)],
+          ['Middle Name', displayText(selectedLearner.middleName)],
+          ['Name Extension', displayText(selectedLearner.nameExtension)],
           ['Sex', selectedLearner.sex],
-          ['Civil Status', selectedLearner.civilStatus],
+          ['Civil Status', displayText(selectedLearner.civilStatus)],
           ['Birthdate', formatDate(selectedLearner.birthdate)],
           ['Age', String(selectedLearner.age)],
-          ['Mother Tongue', selectedLearner.motherTongue],
+          ['Mother Tongue', displayText(selectedLearner.motherTongue)],
           ['IP', selectedLearner.isIP ? 'Yes' : 'No'],
-          ['IP Tribe', selectedLearner.ipTribe || 'N/A'],
-          ['Religion', selectedLearner.religion || 'N/A'],
+          ['IP Tribe', displayText(selectedLearner.ipTribe)],
+          ['Religion', displayText(selectedLearner.religion)],
           ['4Ps Member', selectedLearner.is4PsMember ? 'Yes' : 'No'],
           ['PWD', selectedLearner.isPwd ? 'Yes' : 'No'],
-          ['PWD Type', selectedLearner.pwdType || 'N/A'],
+          ['PWD Type', displayText(selectedLearner.pwdType)],
         ],
       },
       {
         title: 'Education',
         icon: schoolOutline,
         rows: [
-          ['School Name', selectedLearner.schoolName || 'N/A'],
-          ['Currently Studying', selectedLearner.currentlyStudying || 'N/A'],
-          ['Last Grade Completed', selectedLearner.lastGradeCompleted || 'N/A'],
-          ['Reason Not Attending', selectedLearner.reasonForNotAttending || 'N/A'],
+          ['School Name', displayText(selectedLearner.schoolName)],
+          ['Currently Studying', displayText(selectedLearner.currentlyStudying)],
+          ['Last Grade Completed', displayText(selectedLearner.lastGradeCompleted)],
+          ['Reason Not Attending', displayText(selectedLearner.reasonForNotAttending)],
           ['BLP', selectedLearner.isBlp ? 'Yes' : 'No'],
-          ['Interested in ALS', selectedLearner.interestedInALS || 'N/A'],
+          ['Interested in ALS', displayText(selectedLearner.interestedInALS)],
         ],
       },
       {
         title: 'Address',
         icon: homeOutline,
         rows: [
-          ['Municipality', getLearnerMunicipality(selectedLearner) || 'N/A'],
+          ['Municipality', displayText(getLearnerMunicipality(selectedLearner))],
           ['District', formatDistrictLabel(getLearnerDistrict(selectedLearner) || 'N/A')],
-          ['Barangay', selectedLearner.barangay],
-          ['Complete Address', selectedLearner.completeAddress],
+          ['Barangay', displayText(selectedLearner.barangay)],
+          ['Complete Address', displayText(selectedLearner.completeAddress)],
         ],
       },
       {
         title: 'Family',
         icon: peopleOutline,
         rows: [
-          ['Role in Family', selectedLearner.roleInFamily],
-          ['Father Name', selectedLearner.fatherName || 'N/A'],
-          ['Mother Name', selectedLearner.motherName || 'N/A'],
-          ['Guardian Name', selectedLearner.guardianName || 'N/A'],
-          ['Guardian Occupation', selectedLearner.guardianOccupation || 'N/A'],
+          ['Role in Family', displayText(selectedLearner.roleInFamily)],
+          ['Father Name', displayText(selectedLearner.fatherName)],
+          ['Mother Name', displayText(selectedLearner.motherName)],
+          ['Guardian Name', displayText(selectedLearner.guardianName)],
+          ['Guardian Occupation', displayText(selectedLearner.guardianOccupation)],
         ],
       },
       {
         title: 'Logistics',
         icon: busOutline,
         rows: [
-          ['Occupation Type', selectedLearner.occupationType || 'N/A'],
-          ['Employment Status', selectedLearner.employmentStatus || 'N/A'],
-          ['Monthly Income', selectedLearner.monthlyIncome || 'N/A'],
-          ['Contact Number', selectedLearner.contactNumber || 'N/A'],
+          ['Occupation Type', displayText(selectedLearner.occupationType)],
+          ['Employment Status', displayText(selectedLearner.employmentStatus)],
+          ['Monthly Income', displayText(selectedLearner.monthlyIncome)],
+          ['Contact Number', displayText(selectedLearner.contactNumber)],
           ['Distance (km)', String(selectedLearner.distanceKm)],
-          ['Travel Time', selectedLearner.travelTime],
-          ['Transport Mode', selectedLearner.transportMode],
-          ['Preferred Session', selectedLearner.preferredSessionTime],
+          ['Travel Time', displayText(selectedLearner.travelTime)],
+          ['Transport Mode', displayText(selectedLearner.transportMode)],
+          ['Preferred Session', displayText(selectedLearner.preferredSessionTime)],
           ['Date Mapped', formatDate(selectedLearner.dateMapped)],
         ],
       },
@@ -375,9 +376,9 @@ const LearnerListPage: React.FC = () => {
                 <div style={styles.cardRow}>
                   <div style={styles.avatar}>{initials(learner.firstName, learner.lastName)}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={styles.name}>{learner.lastName}, {learner.firstName} {learner.middleName}</div>
+                    <div style={styles.name}>{displayText(learner.lastName)}, {displayText(learner.firstName)} {displayText(learner.middleName)}</div>
                     <div style={styles.meta}>Age: {learner.age} | {learner.sex}</div>
-                    <div style={styles.meta}>Mapped by: {learner.mappedBy}</div>
+                    <div style={styles.meta}>Mapped by: {displayText(learner.mappedBy)}</div>
                   </div>
                   {currentUserId && learner.createdBy === currentUserId && (
                     <div style={styles.cardActions}>
@@ -437,7 +438,7 @@ const LearnerListPage: React.FC = () => {
                 }}
               >
                 <h2 style={styles.detailTopName}>
-                  {selectedLearner.firstName} {selectedLearner.middleName} {selectedLearner.lastName}
+                  {displayText(selectedLearner.firstName)} {displayText(selectedLearner.middleName)} {displayText(selectedLearner.lastName)}
                 </h2>
                 <p style={styles.detailTopMeta}>{selectedLearner.age} yrs old | {selectedLearner.sex}</p>
                 <p style={styles.detailTopMapped}>Mapped: {formatDate(selectedLearner.dateMapped)}</p>
@@ -567,7 +568,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 900,
     lineHeight: 1.15,
     letterSpacing: 0.2,
-    textTransform: 'lowercase',
+    textTransform: 'capitalize',
   },
   detailTopMeta: {
     margin: '8px 0 0',

@@ -106,3 +106,24 @@ export const formatTravelTime = (value: string, unit: 'Hour' | 'Minutes'): strin
   if (!trimmed) return '';
   return `${trimmed} ${unit === 'Hour' ? 'hour' : 'minutes'}`;
 };
+
+export const formatStructuredText = (value: string): string => {
+  const trimmed = value.trim().replace(/\s+/g, ' ');
+  if (!trimmed) return '';
+
+  return trimmed
+    .split(' ')
+    .map((word) => {
+      const lower = word.toLowerCase();
+      if (lower === 'als' || lower === 'blp' || lower === 'pwd' || lower === 'ip' || lower === 'jhs' || lower === 'hs') {
+        return lower.toUpperCase();
+      }
+
+      if (lower === '4ps') {
+        return '4Ps';
+      }
+
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+};

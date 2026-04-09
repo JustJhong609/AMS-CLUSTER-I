@@ -6,6 +6,7 @@ interface AppContextValue {
   setLearners: React.Dispatch<React.SetStateAction<Learner[]>>;
   refreshLearners: () => Promise<void>;
   pendingSyncCount: number;
+  isSyncingPendingLearners: boolean;
   currentUserName: string;
   currentUserId: string;
 }
