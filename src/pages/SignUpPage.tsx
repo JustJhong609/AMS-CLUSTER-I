@@ -11,6 +11,8 @@ import {
 import { useHistory } from 'react-router-dom';
 import { supabase } from '../utils/supabase.ts';
 
+const EMAIL_CONFIRM_REDIRECT_URL = 'https://ams-cluster-i.vercel.app/confirm-email';
+
 const SignUpPage: React.FC = () => {
   const history = useHistory();
   const [formData, setFormData] = useState({
@@ -69,6 +71,7 @@ const SignUpPage: React.FC = () => {
         email: formData.email.trim(),
         password: formData.password,
         options: {
+          emailRedirectTo: EMAIL_CONFIRM_REDIRECT_URL,
           data: {
             full_name: formData.fullName.trim(),
           },
