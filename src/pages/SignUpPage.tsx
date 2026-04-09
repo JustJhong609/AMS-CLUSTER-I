@@ -192,6 +192,33 @@ const SignUpPage: React.FC = () => {
             text-align: center;
           }
 
+          .safe-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(17, 94, 47, 0.22);
+            border: 1px solid rgba(134, 239, 172, 0.45);
+          }
+
+          .safe-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+            animation: safeDotPulse 1.8s ease-out infinite;
+          }
+
+          .safe-label {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.35px;
+            color: #dcfce7;
+            text-transform: uppercase;
+          }
+
           .auth-footer-link {
             text-align: center;
             margin-top: 12px;
@@ -349,6 +376,18 @@ const SignUpPage: React.FC = () => {
             }
           }
 
+          @keyframes safeDotPulse {
+            0% {
+              box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+            }
+            70% {
+              box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+            }
+            100% {
+              box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+            }
+          }
+
           @media (min-width: 768px) {
             .auth-page {
               --padding-top: 24px;
@@ -390,7 +429,13 @@ const SignUpPage: React.FC = () => {
             <IonCardContent className="auth-form-content" style={s.formContent}>
               <form onSubmit={handleSignUp} style={s.form}>
                 <div style={s.formGroup}>
-                  <label style={s.label}>Full Name</label>
+                  <div style={s.labelRow}>
+                    <label style={s.label}>Full Name</label>
+                    <div className="safe-indicator" aria-label="Safe secure form indicator">
+                      <span className="safe-dot" />
+                      <span className="safe-label">Safe</span>
+                    </div>
+                  </div>
                   <div className="field-wrap">
                     <IonIcon className="field-icon" icon={personOutline} />
                     <input
@@ -650,6 +695,12 @@ const s: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     color: '#1E293B',
     letterSpacing: 0.2
+  },
+  labelRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
   },
   submitBtn: {
     '--background': 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 55%, #1d4ed8 100%)',

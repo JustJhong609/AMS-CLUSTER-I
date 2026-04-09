@@ -150,4 +150,14 @@ export const SESSION_TIME_OPTIONS = [
   'Weekends Only'
 ] as const;
 
+export const WEEKDAY_OPTIONS = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+] as const;
+
 export const FORM_SECTIONS = ['Personal Info', 'Education', 'Address', 'Family', 'Logistics'] as const;

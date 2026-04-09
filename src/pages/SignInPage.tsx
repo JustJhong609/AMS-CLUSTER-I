@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { IonButton, IonCard, IonCardContent, IonContent, IonIcon, IonPage } from '@ionic/react';
-import { arrowBackOutline } from 'ionicons/icons';
+import { arrowBackOutline, eyeOffOutline, eyeOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { supabase } from '../utils/supabase.ts';
 
@@ -8,6 +8,7 @@ const SignInPage: React.FC = () => {
   const history = useHistory();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -128,14 +129,25 @@ const SignInPage: React.FC = () => {
 
                 <div style={s.formGroup}>
                   <label style={s.label}>Password</label>
-                  <input
-                    style={s.input}
-                    type="password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={isLoading}
-                  />
+                  <div style={s.passwordFieldWrap}>
+                    <input
+                      style={{ ...s.input, ...s.passwordInput }}
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="button"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      style={s.passwordToggleBtn}
+                      disabled={isLoading}
+                    >
+                      <IonIcon icon={showPassword ? eyeOffOutline : eyeOutline} style={{ fontSize: 20 }} />
+                    </button>
+                  </div>
                 </div>
 
                 {error && <div style={s.errorMsg}>{error}</div>}
@@ -279,6 +291,29 @@ const s: Record<string, React.CSSProperties> = {
     transition: 'all 0.22s ease',
     background: '#f8fafc',
     outline: 'none'
+  },
+  passwordFieldWrap: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  passwordInput: {
+    paddingRight: 44,
+    width: '100%',
+  },
+  passwordToggleBtn: {
+    position: 'absolute',
+    right: 8,
+    top: '50%',
+    transform: 'translateY(-50%)',
+    border: 'none',
+    background: 'transparent',
+    color: '#475569',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 4,
+    cursor: 'pointer',
   },
   submitBtn: {
     '--background': 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 52%, #1d4ed8 100%)',
