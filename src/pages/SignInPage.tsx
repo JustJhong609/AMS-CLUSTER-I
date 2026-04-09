@@ -1,20 +1,26 @@
 import React, { useState } from 'react';
-import { IonButton, IonCard, IonCardContent, IonContent, IonIcon, IonPage } from '@ionic/react';
+import { IonAlert, IonButton, IonCard, IonCardContent, IonContent, IonIcon, IonPage } from '@ionic/react';
 import { arrowBackOutline, eyeOffOutline, eyeOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { supabase } from '../utils/supabase.ts';
+
+const RESET_PASSWORD_REDIRECT_URL = 'https://ams-cluster-i.vercel.app/password-reset';
 
 const SignInPage: React.FC = () => {
   const history = useHistory();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPasswordAlert, setShowForgotPasswordAlert] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isResetSending, setIsResetSending] = useState(false);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setInfo('');
 
     if (!email.trim() || !password.trim()) {
       setError('Email and password are required');
@@ -51,6 +57,38 @@ const SignInPage: React.FC = () => {
       setError(err instanceof Error ? err.message : 'Unable to sign in right now. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSendResetLink = async (emailInput: string) => {
+    const normalizedEmail = emailInput.trim();
+    setError('');
+    setInfo('');
+
+    if (!normalizedEmail) {
+      setError('Please enter your email address to receive a reset link.');
+      return;
+    }
+
+    setIsResetSending(true);
+    try {
+      if (!supabase) {
+        throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY or SUPABASE_URL/SUPABASE_ANON_KEY to your environment.');
+      }
+
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo: RESET_PASSWORD_REDIRECT_URL,
+      });
+
+      if (resetError) {
+        throw resetError;
+      }
+
+      setInfo('Password reset link sent. Please check your email inbox.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to send reset link right now. Please try again.');
+    } finally {
+      setIsResetSending(false);
     }
   };
 
@@ -161,6 +199,7 @@ const SignInPage: React.FC = () => {
                 </div>
 
                 {error && <div style={s.errorMsg}>{error}</div>}
+                {info && <div style={s.infoMsg}>{info}</div>}
 
                 <IonButton
                   expand="block"
@@ -171,23 +210,59 @@ const SignInPage: React.FC = () => {
                 >
                   {isLoading ? 'Signing In...' : 'Sign In'}
                 </IonButton>
+
+                <button
+                  type="button"
+                  style={s.forgotPasswordBtn}
+                  onClick={() => setShowForgotPasswordAlert(true)}
+                  disabled={isLoading || isResetSending}
+                >
+                  Forgot Password?
+                </button>
               </form>
 
-              <div style={s.divider}>
-                <span style={s.dividerText}>Don't have an account?</span>
-              </div>
-
-              <IonButton
-                expand="block"
-                fill="outline"
-                style={s.createBtn}
-                onClick={() => history.push('/sign-up')}
-              >
-                Create Account
-              </IonButton>
+              <p style={s.createInlineText}>
+                Don't have an account?{' '}
+                <button
+                  type="button"
+                  style={s.createInlineBtn}
+                  onClick={() => history.push('/sign-up')}
+                  disabled={isLoading || isResetSending}
+                >
+                  Create Account
+                </button>
+              </p>
             </IonCardContent>
           </IonCard>
         </div>
+
+        <IonAlert
+          isOpen={showForgotPasswordAlert}
+          onDidDismiss={() => setShowForgotPasswordAlert(false)}
+          header="Forgot Password"
+          message="Enter your account email and we will send a password reset link."
+          inputs={[
+            {
+              name: 'email',
+              type: 'email',
+              placeholder: 'you@example.com',
+              value: email,
+            },
+          ]}
+          buttons={[
+            {
+              text: 'Cancel',
+              role: 'cancel',
+            },
+            {
+              text: 'Send Link',
+              handler: (data) => {
+                const emailInput = typeof data?.email === 'string' ? data.email : '';
+                void handleSendResetLink(emailInput);
+              },
+            },
+          ]}
+        />
         </div>
       </IonContent>
     </IonPage>
@@ -325,6 +400,18 @@ const s: Record<string, React.CSSProperties> = {
     padding: 4,
     cursor: 'pointer',
   },
+  forgotPasswordBtn: {
+    alignSelf: 'center',
+    marginTop: 10,
+    border: 'none',
+    background: 'transparent',
+    color: '#dc2626',
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: 'pointer',
+    padding: 0,
+    letterSpacing: 0.2,
+  },
   submitBtn: {
     '--background': 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 52%, #1d4ed8 100%)',
     '--box-shadow': '0 10px 22px rgba(37,99,235,0.34)',
@@ -335,30 +422,26 @@ const s: Record<string, React.CSSProperties> = {
     height: 48,
     marginTop: 8
   } as React.CSSProperties,
-  divider: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 16,
-    margin: '10px 0',
-    position: 'relative'
-  },
-  dividerText: {
+  createInlineText: {
+    margin: '8px 0 0',
+    textAlign: 'center',
+    color: '#94a3b8',
     fontSize: 12,
     fontWeight: 600,
-    color: '#94a3b8',
-    textAlign: 'center',
-    flex: 1
+    letterSpacing: 0.1,
   },
-  createBtn: {
-    '--border-radius': '50px',
-    '--border-color': '#93c5fd',
-    '--border-width': '1.5px',
-    '--color': '#1d4ed8',
-    '--background': 'rgba(255,255,255,0.92)',
-    fontWeight: 700,
-    fontSize: 14,
-    height: 46
-  } as React.CSSProperties,
+  createInlineBtn: {
+    border: 'none',
+    background: 'transparent',
+    color: '#1d4ed8',
+    fontSize: 12,
+    fontWeight: 800,
+    cursor: 'pointer',
+    padding: 0,
+    letterSpacing: 0.15,
+    textDecoration: 'underline',
+    textUnderlineOffset: '2px',
+  },
   errorMsg: {
     color: '#c62828',
     fontSize: 12,
@@ -367,6 +450,15 @@ const s: Record<string, React.CSSProperties> = {
     background: '#ffebee',
     borderRadius: 8,
     marginTop: 8
+  },
+  infoMsg: {
+    color: '#166534',
+    fontSize: 12,
+    fontWeight: 600,
+    padding: '8px 12px',
+    background: '#dcfce7',
+    borderRadius: 8,
+    marginTop: 8,
   }
 };
 
