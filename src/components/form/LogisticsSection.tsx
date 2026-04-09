@@ -1,7 +1,7 @@
 import React from 'react';
-import { IonText } from '@ionic/react';
+import { IonSelect, IonSelectOption, IonText } from '@ionic/react';
 import { LearnerFormData, ValidationErrors } from '../../types';
-import { SESSION_TIME_OPTIONS, TRANSPORT_OPTIONS } from '../../utils/constants';
+import { WEEKDAY_OPTIONS, TRANSPORT_OPTIONS } from '../../utils/constants';
 import DatePickerInput from '../DatePickerInput';
 import FormInput from '../FormInput';
 import FormSelect from '../FormSelect';
@@ -58,14 +58,30 @@ const LogisticsSection: React.FC<Props> = ({ data, errors, onChange }) => (
       error={errors.transportMode}
     />
 
-    <FormSelect
-      label="Preferred Session Time"
-      value={data.preferredSessionTime}
-      onChange={(v) => onChange('preferredSessionTime', v)}
-      options={SESSION_TIME_OPTIONS}
-      required
-      error={errors.preferredSessionTime}
-    />
+    <div className="form-group">
+      <IonSelect
+        label="Preferred Schedule (Days)"
+        labelPlacement="floating"
+        fill="outline"
+        value={WEEKDAY_OPTIONS.filter((day) => data.preferredSessionTime.split(',').map((item) => item.trim()).includes(day))}
+        placeholder="Select one or more days"
+        multiple
+        onIonChange={(e) => {
+          const selected = Array.isArray(e.detail.value) ? (e.detail.value as string[]) : [];
+          const normalized = WEEKDAY_OPTIONS.filter((day) => selected.includes(day));
+          onChange('preferredSessionTime', normalized.join(', '));
+        }}
+        interface="action-sheet"
+        style={{ '--border-radius': '12px', width: '100%' } as React.CSSProperties}
+      >
+        {WEEKDAY_OPTIONS.map((day) => (
+          <IonSelectOption key={day} value={day}>
+            {day}
+          </IonSelectOption>
+        ))}
+      </IonSelect>
+      {errors.preferredSessionTime && <div className="error-text">{errors.preferredSessionTime}</div>}
+    </div>
 
     <FormInput label="Mapped By (Facilitator)" value={data.mappedBy} onChange={(v) => onChange('mappedBy', v)} required error={errors.mappedBy} />
 

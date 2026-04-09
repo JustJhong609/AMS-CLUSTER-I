@@ -19,7 +19,7 @@ import {
   IonToolbar,
 } from '@ionic/react';
 import { downloadOutline } from 'ionicons/icons';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, type ChartOptions } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 import * as XLSX from 'xlsx';
@@ -48,6 +48,31 @@ const isJhsGradeCompleted = (grade?: string): boolean => Boolean(
 type ExportScope = DownloadScope;
 type ExportRow = Record<string, string | number | boolean>;
 
+type CapacitorFilesystem = {
+  writeFile(options: {
+    path: string;
+    data: string;
+    directory?: string;
+    recursive?: boolean;
+  }): Promise<void>;
+  getUri(options: {
+    path: string;
+    directory?: string;
+  }): Promise<{ uri: string }>;
+};
+
+type CapacitorShare = {
+  share(options: {
+    title?: string;
+    text?: string;
+    url?: string;
+    dialogTitle?: string;
+  }): Promise<void>;
+};
+
+const Filesystem = registerPlugin<CapacitorFilesystem>('Filesystem');
+const Share = registerPlugin<CapacitorShare>('Share');
+
 const HEADING_STYLE: React.CSSProperties = {
   fontSize: 14,
   fontWeight: 800,
@@ -67,6 +92,19 @@ const PIE_OPTIONS: ChartOptions<'pie'> = {
       },
     },
   },
+};
+
+const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 0x8000;
+
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    const chunk = bytes.subarray(index, index + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+
+  return btoa(binary);
 };
 
 const PiePane: React.FC<{ title: string; data: ChartDatum[] }> = ({ title, data }) => {
@@ -461,26 +499,50 @@ const AnalyticsPage: React.FC = () => {
     const filename = getExportFilename(scope, target);
 
     try {
-      // Native WebView often blocks browser-style file downloads, so share the file instead.
-      if (Capacitor.isNativePlatform() && typeof File !== 'undefined' && typeof navigator !== 'undefined') {
+      if (Capacitor.isNativePlatform()) {
         const arrayBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
-        const file = new File(
-          [arrayBuffer],
-          filename,
-          { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
-        );
+        const exportPath = `exports/${filename}`;
 
-        const canShareFiles =
-          typeof navigator.canShare === 'function' &&
-          navigator.canShare({ files: [file] });
+        try {
+          // Save to native cache storage, then invoke the OS share sheet using the file URI.
+          const base64Data = arrayBufferToBase64(arrayBuffer);
+          await Filesystem.writeFile({
+            path: exportPath,
+            data: base64Data,
+            directory: 'CACHE',
+            recursive: true,
+          });
 
-        if (canShareFiles && typeof navigator.share === 'function') {
-          await navigator.share({
+          const { uri } = await Filesystem.getUri({ path: exportPath, directory: 'CACHE' });
+          await Share.share({
             title: 'ALS Learner Export',
             text: 'Learner analytics export',
-            files: [file],
+            url: uri,
+            dialogTitle: 'Share learner export',
           });
           return;
+        } catch {
+          // Fallback to Web Share with file payload when plugin bridge is unavailable.
+          if (typeof File !== 'undefined' && typeof navigator !== 'undefined') {
+            const file = new File(
+              [arrayBuffer],
+              filename,
+              { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+            );
+
+            const canShareFiles =
+              typeof navigator.canShare === 'function' &&
+              navigator.canShare({ files: [file] });
+
+            if (canShareFiles && typeof navigator.share === 'function') {
+              await navigator.share({
+                title: 'ALS Learner Export',
+                text: 'Learner analytics export',
+                files: [file],
+              });
+              return;
+            }
+          }
         }
       }
 

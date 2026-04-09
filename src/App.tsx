@@ -153,16 +153,32 @@ const App: React.FC = () => {
           });
         };
 
+        const handleAppWake = () => {
+          void refreshLearners().catch(() => {
+            // Ignore refresh errors when app regains focus.
+          });
+        };
+
+        const handleVisibilityChange = () => {
+          if (document.visibilityState === 'visible') {
+            handleAppWake();
+          }
+        };
+
         const handleQueueChanged = () => {
           refreshPendingSyncCount();
         };
 
         window.addEventListener('online', handleOnline);
+        window.addEventListener('focus', handleAppWake);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
         window.addEventListener(queueChangedEventName, handleQueueChanged);
         activeAuthSubscription = {
           unsubscribe: () => {
             listener.subscription.unsubscribe();
             window.removeEventListener('online', handleOnline);
+            window.removeEventListener('focus', handleAppWake);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
             window.removeEventListener(queueChangedEventName, handleQueueChanged);
           },
         };

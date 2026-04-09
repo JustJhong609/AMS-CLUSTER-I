@@ -65,7 +65,7 @@ export const validateLogistics = (d: LearnerFormData): ValidationResult => {
   if (!d.travelTime.trim() || Number.isNaN(Number(d.travelTime))) e.travelTime = 'Valid travel time number is required';
   if (!d.travelTimeUnit) e.travelTimeUnit = 'Travel time unit is required';
   if (!d.transportMode) e.transportMode = 'Transport mode is required';
-  if (!d.preferredSessionTime) e.preferredSessionTime = 'Preferred session time is required';
+  if (!d.preferredSessionTime.trim()) e.preferredSessionTime = 'Please select at least one preferred schedule day';
   if (!d.mappedBy.trim()) e.mappedBy = 'Mapped-by name is required';
   if (!d.dateMapped) e.dateMapped = 'Date mapped is required';
   return result(e);
