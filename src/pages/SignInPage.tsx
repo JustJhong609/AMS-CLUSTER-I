@@ -33,7 +33,17 @@ const SignInPage: React.FC = () => {
       });
 
       if (signInError) {
+        const rawMessage = signInError.message.toLowerCase();
+        if (rawMessage.includes('email not confirmed') || rawMessage.includes('not confirmed')) {
+          throw new Error('Please confirm your email before signing in. Check your inbox for the confirmation link.');
+        }
         throw signInError;
+      }
+
+      const isEmailConfirmed = Boolean(signInData.user?.email_confirmed_at);
+      if (!isEmailConfirmed) {
+        await supabase.auth.signOut();
+        throw new Error('Please confirm your email before signing in. Check your inbox for the confirmation link.');
       }
 
       history.replace('/');

@@ -6,6 +6,7 @@ import { AppProvider } from './context/AppContext';
 import LandingPage from './pages/LandingPage';
 import SignInPage from './pages/SignInPage';
 import SignUpPage from './pages/SignUpPage';
+import ConfirmEmailPage from './pages/ConfirmEmailPage';
 import HomePage from './pages/HomePage';
 import LearnerListPage from './pages/LearnerListPage';
 import LearnerFormPage from './pages/LearnerFormPage';
@@ -212,6 +213,7 @@ const App: React.FC = () => {
             <Route exact path="/landing" render={() => (isLoggedIn ? <Redirect to="/home" /> : <LandingPage />)} />
             <Route exact path="/sign-in" render={() => (isLoggedIn ? <Redirect to="/home" /> : <SignInPage />)} />
             <Route exact path="/sign-up" render={() => (isLoggedIn ? <Redirect to="/home" /> : <SignUpPage />)} />
+            <Route exact path="/confirm-email" component={ConfirmEmailPage} />
 
             {/* App routes */}
             <Route exact path="/home" render={() => (isLoggedIn ? <HomePage /> : <Redirect to="/sign-in" />)} />
