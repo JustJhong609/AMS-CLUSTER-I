@@ -31,16 +31,21 @@ const App: React.FC = () => {
   const [currentUserName, setCurrentUserName] = useState('');
   const [currentUserId, setCurrentUserId] = useState('');
   const [pendingSyncCount, setPendingSyncCount] = useState<number>(() => getPendingLearnerSyncCount());
+  const [isSyncingPendingLearners, setIsSyncingPendingLearners] = useState(false);
 
   const refreshPendingSyncCount = () => {
     setPendingSyncCount(getPendingLearnerSyncCount());
   };
 
   const refreshLearners = async (): Promise<void> => {
+    const pendingBeforeSync = getPendingLearnerSyncCount();
     try {
-      await syncPendingLearnerOperations().catch(() => {
-        // Ignore background sync errors during learner refresh.
-      });
+      if (pendingBeforeSync > 0) {
+        setIsSyncingPendingLearners(true);
+        await syncPendingLearnerOperations().catch(() => {
+          // Ignore background sync errors during learner refresh.
+        });
+      }
 
       const data = await fetchLearners();
       setLearners(data);
@@ -48,6 +53,7 @@ const App: React.FC = () => {
       // Keep existing cached learners visible during transient fetch issues.
       setLearners(getCachedLearners());
     } finally {
+      setIsSyncingPendingLearners(false);
       refreshPendingSyncCount();
     }
   };
@@ -201,8 +207,9 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <AppProvider value={{ learners, setLearners, refreshLearners, pendingSyncCount, currentUserName, currentUserId }}>
+    <AppProvider value={{ learners, setLearners, refreshLearners, pendingSyncCount, isSyncingPendingLearners, currentUserName, currentUserId }}>
       <IonLoading isOpen={loading} message="Please wait..." spinner="crescent" />
+      <IonLoading isOpen={isSyncingPendingLearners} message="Syncing pending learners..." spinner="crescent" />
       {!loading && (
         <IonReactRouter>
           <Switch>

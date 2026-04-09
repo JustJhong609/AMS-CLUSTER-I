@@ -26,7 +26,7 @@ import * as XLSX from 'xlsx';
 import { useAppContext } from '../context/AppContext';
 import { clusterCoverage } from '../data/clusterCoverage';
 import { BARANGAY_OPTIONS } from '../utils/constants';
-import { formatDate } from '../utils/helpers';
+import { formatDate, formatStructuredText } from '../utils/helpers';
 import { getDistrictByBarangay, getDistrictOptions, getMunicipalityByBarangay, getMunicipalityByDistrict } from '../utils/locationMapping';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -284,6 +284,8 @@ const AnalyticsPage: React.FC = () => {
     getDistrictByBarangay(learner.barangay, getLearnerMunicipality(learner) as any) ||
     'Unknown';
 
+  const displayText = (value?: string | null): string => formatStructuredText(value ?? '');
+
   const getExportScopeLabel = (scope: ExportScope): string => {
     if (scope === 'municipality') return 'Municipality';
     if (scope === 'district') return 'District';
@@ -350,48 +352,48 @@ const AnalyticsPage: React.FC = () => {
           Division: learner.division,
           District: learner.district,
           'Calendar Year': learner.calendarYear,
-          'Mapped By': learner.mappedBy,
-          'Last Name': learner.lastName,
-          'First Name': learner.firstName,
-          'Middle Name': learner.middleName,
+          'Mapped By': displayText(learner.mappedBy),
+          'Last Name': displayText(learner.lastName),
+          'First Name': displayText(learner.firstName),
+          'Middle Name': displayText(learner.middleName),
           'Name Extension': learner.nameExtension || '',
           Sex: learner.sex,
-          'Civil Status': learner.civilStatus,
+          'Civil Status': displayText(learner.civilStatus),
           Birthdate: learner.birthdate,
           Age: learner.age,
-          'Mother Tongue': learner.motherTongue,
+          'Mother Tongue': displayText(learner.motherTongue),
           'Is IP': learner.isIP ? 'Yes' : 'No',
-          'IP Tribe': learner.ipTribe || '',
-          Religion: learner.religion || '',
+          'IP Tribe': displayText(learner.ipTribe),
+          Religion: displayText(learner.religion),
           'Is 4Ps Member': learner.is4PsMember ? 'Yes' : 'No',
-          '4Ps or IP': learner.fourPsOrIp || '',
+          '4Ps or IP': displayText(learner.fourPsOrIp),
           'Is PWD': learner.isPwd ? 'Yes' : 'No',
-          'PWD Type': learner.pwdType || '',
-          'PWD Type Other': learner.pwdTypeOther || '',
+          'PWD Type': displayText(learner.pwdType),
+          'PWD Type Other': displayText(learner.pwdTypeOther),
           Municipality: municipality,
           'Learner District': district,
-          Barangay: learner.barangay,
-          'Complete Address': learner.completeAddress,
-          'Role in Family': learner.roleInFamily,
-          'Father Name': learner.fatherName || '',
-          'Mother Name': learner.motherName || '',
-          'Guardian Name': learner.guardianName || '',
-          'Guardian Occupation': learner.guardianOccupation || '',
-          'School Name': learner.schoolName || '',
-          'Currently Studying': learner.currentlyStudying,
-          'Last Grade Completed': learner.lastGradeCompleted,
-          'Reason For Not Attending': learner.reasonForNotAttending,
-          'Reason For Not Attending Other': learner.reasonForNotAttendingOther || '',
+          Barangay: displayText(learner.barangay),
+          'Complete Address': displayText(learner.completeAddress),
+          'Role in Family': displayText(learner.roleInFamily),
+          'Father Name': displayText(learner.fatherName),
+          'Mother Name': displayText(learner.motherName),
+          'Guardian Name': displayText(learner.guardianName),
+          'Guardian Occupation': displayText(learner.guardianOccupation),
+          'School Name': displayText(learner.schoolName),
+          'Currently Studying': displayText(learner.currentlyStudying),
+          'Last Grade Completed': displayText(learner.lastGradeCompleted),
+          'Reason For Not Attending': displayText(learner.reasonForNotAttending),
+          'Reason For Not Attending Other': displayText(learner.reasonForNotAttendingOther),
           'Is BLP': learner.isBlp ? 'Yes' : 'No',
-          'Occupation Type': learner.occupationType || '',
-          'Employment Status': learner.employmentStatus || '',
-          'Monthly Income': learner.monthlyIncome || '',
-          'Interested In ALS': learner.interestedInALS,
-          'Contact Number': learner.contactNumber || '',
+          'Occupation Type': displayText(learner.occupationType),
+          'Employment Status': displayText(learner.employmentStatus),
+          'Monthly Income': displayText(learner.monthlyIncome),
+          'Interested In ALS': displayText(learner.interestedInALS),
+          'Contact Number': displayText(learner.contactNumber),
           'Distance (km)': learner.distanceKm,
-          'Travel Time': learner.travelTime,
-          'Transport Mode': learner.transportMode,
-          'Preferred Session Time': learner.preferredSessionTime,
+          'Travel Time': displayText(learner.travelTime),
+          'Transport Mode': displayText(learner.transportMode),
+          'Preferred Session Time': displayText(learner.preferredSessionTime),
           'Date Mapped': formatDate(learner.dateMapped),
         };
       })

@@ -56,8 +56,12 @@ const ConfirmEmailPage: React.FC = () => {
         return;
       }
 
+      await supabase.auth.signOut().catch(() => {
+        // Ignore sign-out failures; the confirmation step already completed.
+      });
+
       setStatus('success');
-      setMessage('Email confirmed successfully. You can now continue in the app.');
+      setMessage('Email confirmed successfully. You can now sign in.');
     };
 
     void verifyEmailConfirmation();
@@ -206,7 +210,7 @@ const ConfirmEmailPage: React.FC = () => {
 
             <IonButton className="confirm-action" expand="block" disabled={status === 'verifying'} onClick={handleBackToApp}>
               <IonIcon slot="start" icon={phonePortraitOutline} />
-              {buttonLabel}
+              {status === 'success' ? 'Back to Sign In' : buttonLabel}
             </IonButton>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { IonAlert, IonButton, IonCard, IonCardContent, IonContent, IonIcon, IonPage } from '@ionic/react';
+import { IonAlert, IonButton, IonCard, IonCardContent, IonContent, IonIcon, IonLoading, IonPage } from '@ionic/react';
 import { arrowBackOutline, eyeOffOutline, eyeOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { supabase } from '../utils/supabase.ts';
@@ -263,6 +263,8 @@ const SignInPage: React.FC = () => {
             },
           ]}
         />
+
+        <IonLoading isOpen={isResetSending} message="Sending reset link..." spinner="crescent" />
         </div>
       </IonContent>
     </IonPage>
