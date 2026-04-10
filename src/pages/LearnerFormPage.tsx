@@ -110,6 +110,8 @@ const LearnerFormPage: React.FC = () => {
   const [formData, setFormData] = useState<LearnerFormData>(createEmptyFormData());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSaveAlert, setShowSaveAlert] = useState(false);
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const [saveError, setSaveError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const contentRef = useRef<HTMLIonContentElement>(null);
@@ -240,12 +242,14 @@ const LearnerFormPage: React.FC = () => {
       if (isEditMode) {
         const updatedLearner = await updateLearner(learner);
         setLearners((prev) => prev.map((item) => (item.id === updatedLearner.id ? updatedLearner : item)));
+        setSuccessMessage(`${updatedLearner.firstName} ${updatedLearner.lastName}'s record was updated successfully.`);
       } else {
         const savedLearner = await createLearner(learner);
         setLearners((prev) => [savedLearner, ...prev]);
+        setSuccessMessage(`${savedLearner.firstName} ${savedLearner.lastName} was added successfully.`);
       }
       setShowSaveAlert(false);
-      history.replace('/learners');
+      setShowSuccessAlert(true);
     } catch (error: any) {
       setShowSaveAlert(false);
       setSaveError(error?.message || 'Failed to save learner. Please try again.');
@@ -321,6 +325,25 @@ const LearnerFormPage: React.FC = () => {
         buttons={[
           { text: 'Cancel', role: 'cancel' },
           { text: isEditMode ? 'Update' : 'Save', handler: handleSave }
+        ]}
+      />
+
+      <IonAlert
+        isOpen={showSuccessAlert}
+        onDidDismiss={() => {
+          setShowSuccessAlert(false);
+          history.replace('/learners');
+        }}
+        header={isEditMode ? 'Learner Updated' : 'Learner Added'}
+        message={successMessage}
+        buttons={[
+          {
+            text: 'OK',
+            handler: () => {
+              setShowSuccessAlert(false);
+              history.replace('/learners');
+            }
+          }
         ]}
       />
 
