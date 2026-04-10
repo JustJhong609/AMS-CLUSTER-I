@@ -85,6 +85,14 @@ const LogisticsSection: React.FC<Props> = ({ data, errors, onChange }) => (
 
     <FormInput label="Mapped By (Facilitator)" value={data.mappedBy} onChange={(v) => onChange('mappedBy', v)} required error={errors.mappedBy} />
 
+    <FormInput
+      label="Name of ALS Implementer"
+      value={data.alsImplementer}
+      onChange={(v) => onChange('alsImplementer', v)}
+      required
+      error={errors.alsImplementer}
+    />
+
     <DatePickerInput
       label="Date Mapped"
       value={data.dateMapped}

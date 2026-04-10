@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   IonAlert,
   IonBackButton,
@@ -24,7 +24,7 @@ import {
   IonModal,
   IonTitle,
 } from '@ionic/react';
-import { add, createOutline, filterOutline, personOutline, folderOpenOutline, personCircleOutline, schoolOutline, homeOutline, peopleOutline, busOutline, trashOutline } from 'ionicons/icons';
+import { add, createOutline, filterOutline, personOutline, folderOpenOutline, personCircleOutline, schoolOutline, homeOutline, peopleOutline, busOutline, trashOutline, closeCircle } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { clusterCoverage } from '../data/clusterCoverage';
@@ -38,10 +38,11 @@ const LearnerListPage: React.FC = () => {
   const { learners, setLearners, currentUserId, pendingSyncCount, refreshLearners } = useAppContext();
   const history = useHistory();
   const [query, setQuery] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filterMunicipality, setFilterMunicipality] = useState('');
   const [filterDistrict, setFilterDistrict] = useState('');
   const [filterBarangay, setFilterBarangay] = useState('');
+  const [filterMappedBy, setFilterMappedBy] = useState('');
   const [selectedLearner, setSelectedLearner] = useState<Learner | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Learner | null>(null);
   const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
@@ -74,7 +75,27 @@ const LearnerListPage: React.FC = () => {
     ? municipalityBarangays.filter((barangay) => getDistrictByBarangay(barangay, filterMunicipality as any) === filterDistrict)
     : municipalityBarangays;
 
-  const activeFilterCount = Number(Boolean(filterMunicipality)) + Number(Boolean(filterDistrict)) + Number(Boolean(filterBarangay));
+  const mappedByOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          learners
+            .map((learner) => learner.mappedBy.trim())
+            .filter((name) => name.length > 0),
+        ),
+      ).sort((left, right) => left.localeCompare(right)),
+    [learners],
+  );
+
+  const activeFilterCount = Number(Boolean(filterMunicipality)) + Number(Boolean(filterDistrict)) + Number(Boolean(filterBarangay)) + Number(Boolean(filterMappedBy));
+
+  const activeFilters = useMemo(() => {
+    const filters: Array<{ id: string; label: string; value: string }> = [];
+    if (filterMunicipality) filters.push({ id: 'municipality', label: 'Municipality', value: filterMunicipality });
+    if (filterBarangay) filters.push({ id: 'barangay', label: 'Barangay', value: filterBarangay });
+    if (filterMappedBy) filters.push({ id: 'mappedby', label: 'Mapped By', value: filterMappedBy });
+    return filters;
+  }, [filterMunicipality, filterBarangay, filterMappedBy]);
 
   const getLearnerMunicipality = (learner: { barangay: string; municipality?: string; learnerDistrict?: string }) =>
     learner.municipality ||
@@ -85,17 +106,34 @@ const LearnerListPage: React.FC = () => {
   const getLearnerDistrict = (learner: { barangay: string; municipality?: string; learnerDistrict?: string }) =>
     learner.learnerDistrict || getDistrictByBarangay(learner.barangay, getLearnerMunicipality(learner) as any) || '';
 
-  const filtered = learners.filter((l) => {
+  const filtered = useMemo(() => {
     const q = query.toLowerCase();
-    const textMatch = l.firstName.toLowerCase().includes(q) || l.lastName.toLowerCase().includes(q) || l.middleName.toLowerCase().includes(q);
-    if (!textMatch) return false;
-    const learnerMunicipality = getLearnerMunicipality(l);
-    const learnerDistrict = getLearnerDistrict(l);
-    if (filterMunicipality && learnerMunicipality !== filterMunicipality) return false;
-    if (filterDistrict && learnerDistrict !== filterDistrict) return false;
-    if (filterBarangay && l.barangay !== filterBarangay) return false;
-    return true;
-  });
+
+    return learners
+      .filter((l) => {
+        const textMatch =
+          l.firstName.toLowerCase().includes(q) ||
+          l.lastName.toLowerCase().includes(q) ||
+          l.middleName.toLowerCase().includes(q);
+        if (!textMatch) return false;
+        const learnerMunicipality = getLearnerMunicipality(l);
+        const learnerDistrict = getLearnerDistrict(l);
+        if (filterMunicipality && learnerMunicipality !== filterMunicipality) return false;
+        if (filterDistrict && learnerDistrict !== filterDistrict) return false;
+        if (filterBarangay && l.barangay !== filterBarangay) return false;
+        if (filterMappedBy && l.mappedBy !== filterMappedBy) return false;
+        return true;
+      })
+      .sort((left, right) => {
+        const byLast = left.lastName.trim().localeCompare(right.lastName.trim(), undefined, { sensitivity: 'base' });
+        if (byLast !== 0) return byLast;
+
+        const byFirst = left.firstName.trim().localeCompare(right.firstName.trim(), undefined, { sensitivity: 'base' });
+        if (byFirst !== 0) return byFirst;
+
+        return left.middleName.trim().localeCompare(right.middleName.trim(), undefined, { sensitivity: 'base' });
+      });
+  }, [learners, query, filterMunicipality, filterDistrict, filterBarangay, filterMappedBy]);
 
   const initials = (first: string, last: string) => `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
   const displayText = (value?: string | null): string => formatStructuredText(value ?? '') || 'N/A';
@@ -128,6 +166,7 @@ const LearnerListPage: React.FC = () => {
           ['District', selectedLearner.district],
           ['Calendar Year', String(selectedLearner.calendarYear)],
           ['Mapped By', displayText(selectedLearner.mappedBy)],
+          ['ALS Implementer', displayText(selectedLearner.alsImplementer)],
         ],
       },
       {
@@ -179,7 +218,9 @@ const LearnerListPage: React.FC = () => {
         rows: [
           ['Role in Family', displayText(selectedLearner.roleInFamily)],
           ['Father Name', displayText(selectedLearner.fatherName)],
+          ['Father Occupation', displayText(selectedLearner.fatherOccupation)],
           ['Mother Name', displayText(selectedLearner.motherName)],
+          ['Mother Occupation', displayText(selectedLearner.motherOccupation)],
           ['Guardian Name', displayText(selectedLearner.guardianName)],
           ['Guardian Occupation', displayText(selectedLearner.guardianOccupation)],
         ],
@@ -265,77 +306,139 @@ const LearnerListPage: React.FC = () => {
         </IonToolbar>
 
         <div style={styles.filterToggleBar}>
-          <IonButton fill="clear" size="small" onClick={() => setShowFilters(!showFilters)}>
+          <IonButton fill="clear" size="small" onClick={() => setIsFilterModalOpen(true)}>
             <IonIcon icon={filterOutline} slot="start" />
             Filters {activeFilterCount ? `(${activeFilterCount})` : ''}
           </IonButton>
-          {activeFilterCount > 0 && (
+        </div>
+
+        {activeFilters.length > 0 && (
+          <div style={styles.chipsContainer}>
+            {activeFilters.map((filter) => (
+              <div key={filter.id} style={styles.chip}>
+                <span style={styles.chipLabel}>{filter.value}</span>
+                <IonIcon
+                  icon={closeCircle}
+                  style={styles.chipCloseIcon}
+                  onClick={() => {
+                    if (filter.id === 'municipality') {
+                      setFilterMunicipality('');
+                      setFilterDistrict('');
+                      setFilterBarangay('');
+                    } else if (filter.id === 'barangay') {
+                      setFilterBarangay('');
+                    } else if (filter.id === 'mappedby') {
+                      setFilterMappedBy('');
+                    }
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </IonHeader>
+
+      {/* Filter Bottom Sheet Modal */}
+      <IonModal
+        isOpen={isFilterModalOpen}
+        onDidDismiss={() => setIsFilterModalOpen(false)}
+        initialBreakpoint={0.75}
+        breakpoints={[0, 0.5, 0.75, 1]}
+        handle
+        handleBehavior="cycle"
+      >
+        <div style={styles.bottomSheetContent}>
+          <div style={styles.bottomSheetHeader}>
+            <h2 style={styles.bottomSheetTitle}>Filters</h2>
+          </div>
+
+          <div style={styles.bottomSheetBody}>
+            <IonItem lines="none" style={styles.filterItem}>
+              <IonLabel position="stacked">Municipality</IonLabel>
+              <IonSelect
+                interface="popover"
+                value={filterMunicipality || undefined}
+                placeholder="All municipalities"
+                onIonChange={(e) => {
+                  const municipality = e.detail.value ?? '';
+                  setFilterMunicipality(municipality);
+                  if (filterBarangay) {
+                    const allowedBarangays = municipality
+                      ? (clusterCoverage.find((item) => item.municipality === municipality)?.barangays ?? [])
+                      : allBarangays;
+                    if (!allowedBarangays.includes(filterBarangay)) {
+                      setFilterBarangay('');
+                    }
+                  }
+                }}
+              >
+                {municipalityOptions.map((municipality) => (
+                  <IonSelectOption key={municipality} value={municipality}>
+                    {municipality}
+                  </IonSelectOption>
+                ))}
+              </IonSelect>
+            </IonItem>
+
+            <IonItem lines="none" style={styles.filterItem}>
+              <IonLabel position="stacked">Barangay</IonLabel>
+              <IonSelect
+                interface="popover"
+                value={filterBarangay || undefined}
+                placeholder={filterMunicipality ? 'Select barangay' : 'All barangays'}
+                onIonChange={(e) => setFilterBarangay(e.detail.value ?? '')}
+              >
+                {barangayOptions.map((barangay) => (
+                  <IonSelectOption key={barangay} value={barangay}>
+                    {barangay}
+                  </IonSelectOption>
+                ))}
+              </IonSelect>
+            </IonItem>
+
+            <IonItem lines="none" style={styles.filterItem}>
+              <IonLabel position="stacked">Mapped By</IonLabel>
+              <IonSelect
+                interface="popover"
+                value={filterMappedBy || undefined}
+                placeholder="All facilitators"
+                onIonChange={(e) => setFilterMappedBy(e.detail.value ?? '')}
+              >
+                {mappedByOptions.map((name) => (
+                  <IonSelectOption key={name} value={name}>
+                    {name}
+                  </IonSelectOption>
+                ))}
+              </IonSelect>
+            </IonItem>
+          </div>
+
+          <div style={{ height: '1px', background: '#e2e8f0', margin: '16px 0' }} />
+
+          <div style={styles.bottomSheetActions}>
             <IonButton
-              fill="clear"
-              size="small"
-              color="medium"
+              fill="outline"
+              expand="block"
               onClick={() => {
                 setFilterMunicipality('');
                 setFilterDistrict('');
                 setFilterBarangay('');
+                setFilterMappedBy('');
               }}
             >
-              Clear
+              Reset
             </IonButton>
-          )}
-        </div>
-
-        {showFilters && (
-          <div style={styles.filterPanel}>
-            <div style={styles.filterGrid}>
-              <IonItem lines="none" style={styles.filterField}>
-                <IonSelect
-                  label="Municipality"
-                  labelPlacement="stacked"
-                  interface="popover"
-                  value={filterMunicipality || undefined}
-                  placeholder="All municipalities"
-                  onIonChange={(e) => {
-                    const municipality = e.detail.value ?? '';
-                    setFilterMunicipality(municipality);
-                    if (filterBarangay) {
-                      const allowedBarangays = municipality
-                        ? (clusterCoverage.find((item) => item.municipality === municipality)?.barangays ?? [])
-                        : allBarangays;
-                      if (!allowedBarangays.includes(filterBarangay)) {
-                        setFilterBarangay('');
-                      }
-                    }
-                  }}
-                >
-                  {municipalityOptions.map((municipality) => (
-                    <IonSelectOption key={municipality} value={municipality}>
-                      {municipality}
-                    </IonSelectOption>
-                  ))}
-                </IonSelect>
-              </IonItem>
-
-              <IonItem lines="none" style={styles.filterField}>
-                <IonSelect
-                  label="Barangay"
-                  labelPlacement="stacked"
-                  interface="popover"
-                  value={filterBarangay || undefined}
-                  placeholder={filterMunicipality ? 'Select barangay' : 'All barangays'}
-                  onIonChange={(e) => setFilterBarangay(e.detail.value ?? '')}
-                >
-                  {barangayOptions.map((barangay) => (
-                    <IonSelectOption key={barangay} value={barangay}>
-                      {barangay}
-                    </IonSelectOption>
-                  ))}
-                </IonSelect>
-              </IonItem>
-            </div>
+            <IonButton
+              fill="solid"
+              expand="block"
+              onClick={() => setIsFilterModalOpen(false)}
+              style={{ '--background': '#1d4ed8' } as React.CSSProperties}
+            >
+              Apply Filters
+            </IonButton>
           </div>
-        )}
-      </IonHeader>
+        </div>
+      </IonModal>
 
       <IonContent>
         <IonRefresher
@@ -551,13 +654,83 @@ const styles: Record<string, React.CSSProperties> = {
   filterToggleBar: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     borderTop: '1px solid #e2e8f0',
     borderBottom: '1px solid #e2e8f0',
-    padding: '2px 6px'
+    padding: '4px 8px'
   },
-  filterPanel: { padding: '8px 10px', background: '#fff', borderBottom: '1px solid #e2e8f0' }
-  ,
+  chipsContainer: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 8,
+    padding: '8px 12px',
+    background: '#f8fafc',
+    borderBottom: '1px solid #e2e8f0',
+    overflowX: 'auto' as const,
+  },
+  chip: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    paddingLeft: 12,
+    paddingRight: 4,
+    paddingTop: 6,
+    paddingBottom: 6,
+    background: '#dbeafe',
+    border: '1px solid #93c5fd',
+    borderRadius: 20,
+    whiteSpace: 'nowrap' as const,
+    fontSize: 13,
+    fontWeight: 600,
+    color: '#1e40af',
+  },
+  chipLabel: {
+    maxWidth: '280px',
+    overflow: 'hidden' as const,
+    textOverflow: 'ellipsis' as const,
+  },
+  chipCloseIcon: {
+    width: 18,
+    height: 18,
+    cursor: 'pointer',
+    color: '#3b82f6',
+    flexShrink: 0,
+  },
+  bottomSheetContent: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    height: '100%',
+  },
+  bottomSheetHeader: {
+    padding: '16px 16px 12px',
+    borderBottom: '1px solid #e2e8f0',
+  },
+  bottomSheetTitle: {
+    margin: 0,
+    fontSize: 18,
+    fontWeight: 800,
+    color: '#1e293b',
+  },
+  bottomSheetBody: {
+    flex: 1,
+    overflowY: 'auto' as const,
+    padding: '12px 6px',
+  },
+  filterItem: {
+    marginBottom: 12,
+    '--background': '#f8fafc',
+    '--border-color': '#e2e8f0',
+    borderRadius: '10px',
+  } as React.CSSProperties,
+  bottomSheetActions: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 10,
+    padding: 16,
+    borderTop: '1px solid #e2e8f0',
+    background: '#fff',
+  },
+  filterPanel: { padding: '8px 10px', background: '#fff', borderBottom: '1px solid #e2e8f0' },
   filterGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',

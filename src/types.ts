@@ -21,6 +21,7 @@ export interface Learner {
   district: string;
   calendarYear: number;
   mappedBy: string;
+  alsImplementer?: string;
 
   lastName: string;
   firstName: string;
@@ -47,7 +48,9 @@ export interface Learner {
 
   roleInFamily: string;
   fatherName?: string;
+  fatherOccupation?: string;
   motherName?: string;
+  motherOccupation?: string;
   guardianName?: string;
   guardianOccupation?: string;
 
@@ -77,6 +80,7 @@ export interface LearnerFormData {
   district: string;
   calendarYear: number;
   mappedBy: string;
+  alsImplementer: string;
 
   lastName: string;
   firstName: string;
@@ -105,7 +109,9 @@ export interface LearnerFormData {
 
   roleInFamily: string;
   fatherName: string;
+  fatherOccupation: string;
   motherName: string;
+  motherOccupation: string;
   guardianName: string;
   guardianOccupation: string;
 

@@ -32,6 +32,7 @@ const fmt = (iso: string) => {
 const DatePickerInput: React.FC<Props> = ({ label, value, onChange, required, error, max, min }) => {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value || '');
+  const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
 
   const handleOpen = () => {
     setDraft(value || new Date().toISOString().split('T')[0]);
@@ -106,6 +107,27 @@ const DatePickerInput: React.FC<Props> = ({ label, value, onChange, required, er
 
       {error && <div className="error-text">{error}</div>}
 
+      {isOffline && (
+        <input
+          type="date"
+          value={value || ''}
+          max={max ?? `${new Date().getFullYear()}-12-31`}
+          min={min ?? '1900-01-01'}
+          onChange={(e) => onChange(e.target.value)}
+          style={{
+            width: '100%',
+            marginTop: 8,
+            padding: '12px 14px',
+            borderRadius: 10,
+            border: `1.5px solid ${error ? 'var(--ion-color-danger)' : '#CBD5E1'}`,
+            background: '#fff',
+            color: '#1e293b',
+            fontSize: 15,
+            fontFamily: 'inherit'
+          }}
+        />
+      )}
+
       <IonModal
         isOpen={open}
         onDidDismiss={() => setOpen(false)}
@@ -113,6 +135,7 @@ const DatePickerInput: React.FC<Props> = ({ label, value, onChange, required, er
         initialBreakpoint={0.75}
         handle
         handleBehavior="cycle"
+        keepContentsMounted
       >
         <IonHeader>
           <IonToolbar>

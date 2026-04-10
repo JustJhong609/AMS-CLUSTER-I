@@ -7,6 +7,7 @@ export const createEmptyFormData = (): LearnerFormData => ({
   district: DISTRICT,
   calendarYear: new Date().getFullYear(),
   mappedBy: '',
+  alsImplementer: '',
 
   lastName: '',
   firstName: '',
@@ -35,7 +36,9 @@ export const createEmptyFormData = (): LearnerFormData => ({
 
   roleInFamily: '',
   fatherName: '',
+  fatherOccupation: '',
   motherName: '',
+  motherOccupation: '',
   guardianName: '',
   guardianOccupation: '',
 
