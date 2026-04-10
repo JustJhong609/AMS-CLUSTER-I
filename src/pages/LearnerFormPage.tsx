@@ -26,11 +26,17 @@ import { Learner, LearnerFormData } from '../types';
 import { calculateAge, createEmptyFormData, formatTravelTime, generateId, parseTravelTime } from '../utils/helpers';
 import { createLearner, updateLearner } from '../utils/learnerApi';
 import { validateSection } from '../utils/validation';
-import { formatStructuredText } from '../utils/helpers';
 
 const TOTAL_STEPS = 5;
 
 const toYesNo = (value: boolean): string => (value ? 'Yes' : 'No');
+
+const trimText = (value: string): string => value.trim();
+
+const optionalTrimmedText = (value: string): string | undefined => {
+  const trimmed = value.trim();
+  return trimmed || undefined;
+};
 
 const learnerToFormData = (learner: Learner): LearnerFormData => {
   const parsedTravelTime = parseTravelTime(learner.travelTime);
@@ -171,11 +177,11 @@ const LearnerFormPage: React.FC = () => {
     const OTHER_OPTION = 'Others (Please Specify)';
     const resolvedMotherTongue =
       formData.motherTongue === OTHER_OPTION && formData.motherTongueOther.trim()
-        ? formData.motherTongueOther.trim()
+        ? trimText(formData.motherTongueOther)
         : formData.motherTongue;
     const resolvedBarangay =
       formData.barangay === OTHER_OPTION && formData.barangayOther.trim()
-        ? formData.barangayOther.trim()
+        ? trimText(formData.barangayOther)
         : formData.barangay;
     const resolvedMunicipality = formData.municipality as Learner['municipality'];
 
@@ -185,48 +191,48 @@ const LearnerFormPage: React.FC = () => {
       division: formData.division,
       district: formData.district,
       calendarYear: formData.calendarYear,
-      mappedBy: formatStructuredText(formData.mappedBy),
-      lastName: formatStructuredText(formData.lastName),
-      firstName: formatStructuredText(formData.firstName),
-      middleName: formatStructuredText(formData.middleName),
-      nameExtension: formatStructuredText(formData.nameExtension) || undefined,
+      mappedBy: trimText(formData.mappedBy),
+      lastName: trimText(formData.lastName),
+      firstName: trimText(formData.firstName),
+      middleName: trimText(formData.middleName),
+      nameExtension: optionalTrimmedText(formData.nameExtension),
       sex: formData.sex as 'Male' | 'Female',
-      civilStatus: formatStructuredText(formData.civilStatus),
+      civilStatus: trimText(formData.civilStatus),
       birthdate: formData.birthdate,
       age: calculateAge(formData.birthdate),
-      motherTongue: formatStructuredText(resolvedMotherTongue),
+      motherTongue: trimText(resolvedMotherTongue),
       isIP: formData.isIP === 'Yes',
-      ipTribe: formatStructuredText(formData.ipTribe) || undefined,
-      religion: formatStructuredText(formData.religion) || undefined,
+      ipTribe: optionalTrimmedText(formData.ipTribe),
+      religion: optionalTrimmedText(formData.religion),
       is4PsMember: formData.is4PsMember === 'Yes',
-      fourPsOrIp: formatStructuredText(formData.fourPsOrIp) || undefined,
+      fourPsOrIp: optionalTrimmedText(formData.fourPsOrIp),
       isPwd: formData.isPwd === 'Yes',
-      pwdType: formatStructuredText(formData.pwdType) || undefined,
-      pwdTypeOther: formatStructuredText(formData.pwdTypeOther) || undefined,
+      pwdType: optionalTrimmedText(formData.pwdType),
+      pwdTypeOther: optionalTrimmedText(formData.pwdTypeOther),
       municipality: resolvedMunicipality,
-      learnerDistrict: formatStructuredText(formData.learnerDistrict),
+      learnerDistrict: trimText(formData.learnerDistrict),
       barangay: resolvedBarangay,
-      completeAddress: formatStructuredText(formData.completeAddress),
-      roleInFamily: formatStructuredText(formData.roleInFamily),
-      fatherName: formatStructuredText(formData.fatherName) || undefined,
-      motherName: formatStructuredText(formData.motherName) || undefined,
-      guardianName: formatStructuredText(formData.guardianName) || undefined,
-      guardianOccupation: formatStructuredText(formData.guardianOccupation) || undefined,
-      schoolName: formatStructuredText(formData.schoolName) || undefined,
-      currentlyStudying: formatStructuredText(formData.currentlyStudying || 'No'),
-      lastGradeCompleted: formatStructuredText(formData.lastGradeCompleted),
-      reasonForNotAttending: formatStructuredText(formData.reasonForNotAttending),
-      reasonForNotAttendingOther: formatStructuredText(formData.reasonForNotAttendingOther) || undefined,
+      completeAddress: trimText(formData.completeAddress),
+      roleInFamily: trimText(formData.roleInFamily),
+      fatherName: optionalTrimmedText(formData.fatherName),
+      motherName: optionalTrimmedText(formData.motherName),
+      guardianName: optionalTrimmedText(formData.guardianName),
+      guardianOccupation: optionalTrimmedText(formData.guardianOccupation),
+      schoolName: optionalTrimmedText(formData.schoolName),
+      currentlyStudying: trimText(formData.currentlyStudying || 'No'),
+      lastGradeCompleted: trimText(formData.lastGradeCompleted),
+      reasonForNotAttending: trimText(formData.reasonForNotAttending),
+      reasonForNotAttendingOther: optionalTrimmedText(formData.reasonForNotAttendingOther),
       isBlp: formData.isBlp === 'Yes',
-      occupationType: formatStructuredText(formData.occupationType) || undefined,
-      employmentStatus: formatStructuredText(formData.employmentStatus) || undefined,
+      occupationType: optionalTrimmedText(formData.occupationType),
+      employmentStatus: optionalTrimmedText(formData.employmentStatus),
       monthlyIncome: formData.monthlyIncome.trim() || undefined,
-      interestedInALS: formatStructuredText(formData.interestedInALS || 'No'),
+      interestedInALS: trimText(formData.interestedInALS || 'No'),
       contactNumber: formData.contactNumber.trim() || undefined,
       distanceKm: parseFloat(formData.distanceKm),
       travelTime: formatTravelTime(formData.travelTime, formData.travelTimeUnit),
-      transportMode: formatStructuredText(formData.transportMode),
-      preferredSessionTime: formatStructuredText(formData.preferredSessionTime),
+      transportMode: trimText(formData.transportMode),
+      preferredSessionTime: trimText(formData.preferredSessionTime),
       dateMapped: formData.dateMapped
     };
 
