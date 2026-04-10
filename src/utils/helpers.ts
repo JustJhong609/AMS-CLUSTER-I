@@ -115,6 +115,10 @@ export const formatStructuredText = (value: string): string => {
     .split(' ')
     .map((word) => {
       const lower = word.toLowerCase();
+      if (word === word.toUpperCase() && /[a-z]/i.test(word) && word.length <= 4) {
+        return word;
+      }
+
       if (lower === 'als' || lower === 'blp' || lower === 'pwd' || lower === 'ip' || lower === 'jhs' || lower === 'hs') {
         return lower.toUpperCase();
       }
