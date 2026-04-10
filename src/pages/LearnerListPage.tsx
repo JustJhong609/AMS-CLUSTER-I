@@ -44,6 +44,8 @@ const LearnerListPage: React.FC = () => {
   const [filterBarangay, setFilterBarangay] = useState('');
   const [selectedLearner, setSelectedLearner] = useState<Learner | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Learner | null>(null);
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+  const [deleteSuccessMessage, setDeleteSuccessMessage] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -104,6 +106,8 @@ const LearnerListPage: React.FC = () => {
     try {
       await deleteLearner(target.id);
       setLearners((prev) => prev.filter((item) => item.id !== target.id));
+      setDeleteSuccessMessage(`${target.firstName} ${target.lastName} was deleted successfully.`);
+      setShowDeleteSuccess(true);
       setSelectedLearner(null);
       setDeleteTarget(null);
     } catch (error: any) {
@@ -493,6 +497,14 @@ const LearnerListPage: React.FC = () => {
         />
 
         <IonAlert isOpen={!!deleteError} onDidDismiss={() => setDeleteError('')} header="Delete Failed" message={deleteError} buttons={['OK']} />
+
+        <IonAlert
+          isOpen={showDeleteSuccess}
+          onDidDismiss={() => setShowDeleteSuccess(false)}
+          header="Learner Deleted"
+          message={deleteSuccessMessage}
+          buttons={['OK']}
+        />
       </IonContent>
     </IonPage>
   );
