@@ -25,13 +25,14 @@ export const FAMILY_ROLE_OPTIONS = [
 export const MOTHER_TONGUE_OPTIONS = [
   'Tagalog',
   'Cebuano',
+  'Bisaya',
   'Binukid',
   'Hiligaynon',
   'Waray',
   'Maranao'
 ] as const;
 
-export const OCCUPATION_TYPE_OPTIONS = ['Government', 'Private', 'Self-employed', 'None'] as const;
+export const OCCUPATION_TYPE_OPTIONS = ['Government', 'Private', 'Self-employed', 'Student', 'None'] as const;
 
 export const EMPLOYMENT_STATUS_OPTIONS = ['Regular', 'Contractual', 'Casual', 'JO'] as const;
 

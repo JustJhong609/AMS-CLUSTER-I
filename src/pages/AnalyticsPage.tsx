@@ -17,8 +17,9 @@ import {
   IonText,
   IonTitle,
   IonToolbar,
+  IonModal,
 } from '@ionic/react';
-import { downloadOutline } from 'ionicons/icons';
+import { downloadOutline, filterOutline, closeCircle } from 'ionicons/icons';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, type ChartOptions } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
@@ -28,6 +29,18 @@ import { clusterCoverage } from '../data/clusterCoverage';
 import { BARANGAY_OPTIONS } from '../utils/constants';
 import { formatDate, formatStructuredText } from '../utils/helpers';
 import { getDistrictByBarangay, getDistrictOptions, getMunicipalityByBarangay, getMunicipalityByDistrict } from '../utils/locationMapping';
+import {
+  downloadHeaderStyle,
+  downloadChipsContainerStyle,
+  downloadChipStyle,
+  downloadChipLabelStyle,
+  downloadChipCloseIconStyle,
+  downloadBottomSheetContentStyle,
+  downloadBottomSheetHeaderStyle,
+  downloadBottomSheetBodyStyle,
+  downloadFilterItemStyle,
+  downloadBottomSheetActionsStyle,
+} from '../styles/analyticsDownloadStyles';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -168,13 +181,36 @@ const PiePane: React.FC<{ title: string; data: ChartDatum[] }> = ({ title, data 
 const AnalyticsPage: React.FC = () => {
   const { learners } = useAppContext();
   const [activeSection, setActiveSection] = useState<SectionKey>('municipality');
+  const [isDownloadFilterModalOpen, setIsDownloadFilterModalOpen] = useState(false);
   const [downloadScope, setDownloadScope] = useState<DownloadScope>('municipality');
   const [downloadTarget, setDownloadTarget] = useState<DownloadTarget>('overall');
+  const [downloadMappedBy, setDownloadMappedBy] = useState<string>('all');
+  const [downloadInterestedFilter, setDownloadInterestedFilter] = useState<'all' | 'yes'>('all');
   const [downloadError, setDownloadError] = useState('');
 
   const municipalityOptions = clusterCoverage.map((item) => item.municipality);
   const districtOptions = getDistrictOptions();
   const allBarangays = clusterCoverage.flatMap((item) => item.barangays);
+  const mappedByOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          learners
+            .map((learner) => learner.mappedBy.trim())
+            .filter((name) => name.length > 0),
+        ),
+      ).sort((left, right) => left.localeCompare(right)),
+    [learners],
+  );
+
+  const activeDownloadFilters = useMemo(() => {
+    const filters: Array<{ id: string; label: string; value: string }> = [];
+    if (downloadScope !== 'municipality') filters.push({ id: 'scope', label: 'Download By', value: downloadScope === 'district' ? 'By District' : 'By Barangay' });
+    if (downloadTarget !== 'overall') filters.push({ id: 'target', label: 'Selected', value: String(downloadTarget).split('::').pop() || '' });
+    if (downloadMappedBy !== 'all') filters.push({ id: 'mappedby', label: 'Mapped By', value: downloadMappedBy });
+    if (downloadInterestedFilter === 'yes') filters.push({ id: 'interested', label: 'Interested', value: 'Yes only' });
+    return filters;
+  }, [downloadScope, downloadTarget, downloadMappedBy, downloadInterestedFilter]);
 
   const stats = useMemo(() => {
     let total = 0;
@@ -273,6 +309,25 @@ const AnalyticsPage: React.FC = () => {
     Malitbog: '#7c3aed',
   };
 
+  const getDuplicateBarangays = (): Set<string> => {
+    const barangayCount: Record<string, number> = {};
+    clusterCoverage.forEach((cluster) => {
+      cluster.barangays.forEach((b) => {
+        barangayCount[b] = (barangayCount[b] || 0) + 1;
+      });
+    });
+    return new Set(Object.entries(barangayCount).filter(([, count]) => count > 1).map(([name]) => name));
+  };
+
+  const duplicateBarangays = useMemo(() => getDuplicateBarangays(), []);
+
+  const formatBarangayWithMunicipality = (barangay: string, municipality: string): string => {
+    if (duplicateBarangays.has(barangay)) {
+      return `${barangay} (${municipality})`;
+    }
+    return barangay;
+  };
+
   const getLearnerMunicipality = (learner: { barangay: string; municipality?: string; learnerDistrict?: string }) =>
     learner.municipality ||
     (learner.learnerDistrict ? getMunicipalityByDistrict(learner.learnerDistrict) : undefined) ||
@@ -335,9 +390,16 @@ const AnalyticsPage: React.FC = () => {
   };
 
   const buildExportRows = (scope: ExportScope, target: DownloadTarget): ExportRow[] => {
-    const filteredLearners = target === 'overall'
-      ? learners
-      : learners.filter((learner) => getExportTargetKey(learner, scope) === target);
+    const matchesTarget = (learner: typeof learners[number]): boolean =>
+      target === 'overall' || getExportTargetKey(learner, scope) === target;
+
+    const matchesMappedBy = (learner: typeof learners[number]): boolean =>
+      downloadMappedBy === 'all' || learner.mappedBy === downloadMappedBy;
+
+    const matchesInterested = (learner: typeof learners[number]): boolean =>
+      downloadInterestedFilter === 'all' || learner.interestedInALS.trim().toLowerCase() === 'yes';
+
+    const filteredLearners = learners.filter((learner) => matchesTarget(learner) && matchesMappedBy(learner) && matchesInterested(learner));
 
     return [...filteredLearners]
       .map((learner) => {
@@ -372,11 +434,13 @@ const AnalyticsPage: React.FC = () => {
           'PWD Type Other': displayText(learner.pwdTypeOther),
           Municipality: municipality,
           'Learner District': district,
-          Barangay: displayText(learner.barangay),
+          Barangay: displayText(formatBarangayWithMunicipality(learner.barangay, municipality)),
           'Complete Address': displayText(learner.completeAddress),
           'Role in Family': displayText(learner.roleInFamily),
           'Father Name': displayText(learner.fatherName),
+          'Father Occupation': displayText(learner.fatherOccupation),
           'Mother Name': displayText(learner.motherName),
+          'Mother Occupation': displayText(learner.motherOccupation),
           'Guardian Name': displayText(learner.guardianName),
           'Guardian Occupation': displayText(learner.guardianOccupation),
           'School Name': displayText(learner.schoolName),
@@ -388,6 +452,7 @@ const AnalyticsPage: React.FC = () => {
           'Occupation Type': displayText(learner.occupationType),
           'Employment Status': displayText(learner.employmentStatus),
           'Monthly Income': displayText(learner.monthlyIncome),
+          'ALS Implementer': displayText(learner.alsImplementer),
           'Interested In ALS': displayText(learner.interestedInALS),
           'Contact Number': displayText(learner.contactNumber),
           'Distance (km)': learner.distanceKm,
@@ -424,12 +489,18 @@ const AnalyticsPage: React.FC = () => {
   };
 
   const byBarangay = (predicate: (learner: typeof learners[number]) => boolean = () => true) => {
-    const counts: Record<string, number> = {};
+    const counts: Record<string, { count: number; municipality: string }> = {};
     learners.forEach((learner) => {
       if (!predicate(learner)) return;
-      counts[learner.barangay] = (counts[learner.barangay] || 0) + 1;
+      const municipality = getLearnerMunicipality(learner);
+      const key = `${learner.barangay}::${municipality}`;
+      counts[key] = { count: (counts[key]?.count || 0) + 1, municipality };
     });
-    return allBarangays.map((barangay) => [barangay, counts[barangay] || 0] as [string, number]);
+    return Object.entries(counts).map(([key, { count, municipality }]) => {
+      const barangay = key.split('::')[0];
+      const label = formatBarangayWithMunicipality(barangay, municipality);
+      return [label, count] as [string, number];
+    });
   };
 
   const overallByDistrict = (predicate: (learner: typeof learners[number]) => boolean = () => true) => {
@@ -485,7 +556,7 @@ const AnalyticsPage: React.FC = () => {
   const downloadExcel = async (scope: ExportScope, target: DownloadTarget): Promise<void> => {
     const rows = buildExportRows(scope, target);
     if (!rows.length) {
-      setDownloadError('No learner data available for the selected export range.');
+      setDownloadError('No learner data available for the selected export filters.');
       return;
     }
 
@@ -666,15 +737,80 @@ const AnalyticsPage: React.FC = () => {
           }
         `}</style>
 
-        <div style={HEADING_STYLE}>Download Excel Reports</div>
-        <IonCard>
+        <div style={downloadHeaderStyle}>
+          <h2 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#1e293b', letterSpacing: 0.2 }}>Download Excel Reports</h2>
+          <IonButton
+            fill="clear"
+            size="small"
+            onClick={() => setIsDownloadFilterModalOpen(true)}
+          >
+            <IonIcon icon={filterOutline} slot="start" />
+            Filters {activeDownloadFilters.length ? `(${activeDownloadFilters.length})` : ''}
+          </IonButton>
+        </div>
+
+        {activeDownloadFilters.length > 0 && (
+          <div style={downloadChipsContainerStyle}>
+            {activeDownloadFilters.map((filter) => (
+              <div key={filter.id} style={downloadChipStyle}>
+                <span style={downloadChipLabelStyle}>{filter.value}</span>
+                <IonIcon
+                  icon={closeCircle}
+                  style={downloadChipCloseIconStyle}
+                  onClick={() => {
+                    if (filter.id === 'scope') setDownloadScope('municipality');
+                    if (filter.id === 'target') setDownloadTarget('overall');
+                    if (filter.id === 'mappedby') setDownloadMappedBy('all');
+                    if (filter.id === 'interested') setDownloadInterestedFilter('all');
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        <IonCard style={{ marginTop: 12 }}>
           <IonCardContent>
-            <div style={{ display: 'grid', gap: 12 }}>
-              <IonItem lines="none" style={{ '--background': '#F8FAFC', borderRadius: 12 } as React.CSSProperties}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <IonButton
+                color="medium"
+                onClick={() => {
+                  setDownloadScope('municipality');
+                  setDownloadTarget('overall');
+                  setDownloadMappedBy('all');
+                  setDownloadInterestedFilter('all');
+                }}
+              >
+                Reset Filters
+              </IonButton>
+              <IonButton onClick={() => downloadExcel(downloadScope, downloadTarget)} style={{ '--border-radius': '14px' } as React.CSSProperties}>
+                <IonIcon slot="start" icon={downloadOutline} />
+                Download Excel
+              </IonButton>
+            </div>
+          </IonCardContent>
+        </IonCard>
+
+        {/* Download Filters Bottom Sheet Modal */}
+        <IonModal
+          isOpen={isDownloadFilterModalOpen}
+          onDidDismiss={() => setIsDownloadFilterModalOpen(false)}
+          initialBreakpoint={0.75}
+          breakpoints={[0, 0.5, 0.75, 1]}
+          handle
+          handleBehavior="cycle"
+        >
+          <div style={downloadBottomSheetContentStyle}>
+            <div style={downloadBottomSheetHeaderStyle}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#1e293b' }}>Download Filters</h2>
+            </div>
+
+            <div style={downloadBottomSheetBodyStyle}>
+              <IonItem lines="none" style={downloadFilterItemStyle}>
                 <IonLabel position="stacked">Download By</IonLabel>
                 <IonSelect
-                  value={downloadScope}
                   interface="popover"
+                  value={downloadScope}
                   onIonChange={(e) => {
                     const scope = e.detail.value as DownloadScope;
                     setDownloadScope(scope);
@@ -687,13 +823,13 @@ const AnalyticsPage: React.FC = () => {
                 </IonSelect>
               </IonItem>
 
-              <IonItem lines="none" style={{ '--background': '#F8FAFC', borderRadius: 12 } as React.CSSProperties}>
+              <IonItem lines="none" style={downloadFilterItemStyle}>
                 <IonLabel position="stacked">
                   {downloadTarget === 'overall' ? 'Export Range' : `Selected ${getExportScopeLabel(downloadScope)}`}
                 </IonLabel>
                 <IonSelect
-                  value={downloadTarget}
                   interface="popover"
+                  value={downloadTarget}
                   onIonChange={(e) => setDownloadTarget(e.detail.value as DownloadTarget)}
                 >
                   <IonSelectOption value="overall">Overall</IonSelectOption>
@@ -704,15 +840,62 @@ const AnalyticsPage: React.FC = () => {
                   ))}
                 </IonSelect>
               </IonItem>
+
+              <IonItem lines="none" style={downloadFilterItemStyle}>
+                <IonLabel position="stacked">Mapped By User</IonLabel>
+                <IonSelect
+                  interface="popover"
+                  value={downloadMappedBy}
+                  onIonChange={(e) => setDownloadMappedBy(e.detail.value as string)}
+                >
+                  <IonSelectOption value="all">All users</IonSelectOption>
+                  {mappedByOptions.map((name) => (
+                    <IonSelectOption key={name} value={name}>
+                      {name}
+                    </IonSelectOption>
+                  ))}
+                </IonSelect>
+              </IonItem>
+
+              <IonItem lines="none" style={downloadFilterItemStyle}>
+                <IonLabel position="stacked">Interested in ALS A&amp;E</IonLabel>
+                <IonSelect
+                  interface="popover"
+                  value={downloadInterestedFilter}
+                  onIonChange={(e) => setDownloadInterestedFilter(e.detail.value as 'all' | 'yes')}
+                >
+                  <IonSelectOption value="all">All learners</IonSelectOption>
+                  <IonSelectOption value="yes">Yes only</IonSelectOption>
+                </IonSelect>
+              </IonItem>
             </div>
-            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
-              <IonButton onClick={() => downloadExcel(downloadScope, downloadTarget)} style={{ '--border-radius': '14px' } as React.CSSProperties}>
-                <IonIcon slot="start" icon={downloadOutline} />
-                Download Excel
+
+            <div style={{ height: '1px', background: '#e2e8f0', margin: '16px 0' }} />
+
+            <div style={downloadBottomSheetActionsStyle}>
+              <IonButton
+                fill="outline"
+                expand="block"
+                onClick={() => {
+                  setDownloadScope('municipality');
+                  setDownloadTarget('overall');
+                  setDownloadMappedBy('all');
+                  setDownloadInterestedFilter('all');
+                }}
+              >
+                Reset
+              </IonButton>
+              <IonButton
+                fill="solid"
+                expand="block"
+                onClick={() => setIsDownloadFilterModalOpen(false)}
+                style={{ '--background': '#1d4ed8' } as React.CSSProperties}
+              >
+                Apply Filters
               </IonButton>
             </div>
-          </IonCardContent>
-        </IonCard>
+          </div>
+        </IonModal>
 
         <IonAlert
           isOpen={!!downloadError}

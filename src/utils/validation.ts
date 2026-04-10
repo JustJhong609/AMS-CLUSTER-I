@@ -67,6 +67,7 @@ export const validateLogistics = (d: LearnerFormData): ValidationResult => {
   if (!d.transportMode) e.transportMode = 'Transport mode is required';
   if (!d.preferredSessionTime.trim()) e.preferredSessionTime = 'Please select at least one preferred schedule day';
   if (!d.mappedBy.trim()) e.mappedBy = 'Mapped-by name is required';
+  if (!d.alsImplementer.trim()) e.alsImplementer = 'ALS implementer name is required';
   if (!d.dateMapped) e.dateMapped = 'Date mapped is required';
   return result(e);
 };

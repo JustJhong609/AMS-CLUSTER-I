@@ -28,7 +28,9 @@ const FamilySection: React.FC<Props> = ({ data, errors, onChange }) => (
     />
 
     <FormInput label="Father's Name (optional)" value={data.fatherName} onChange={(v) => onChange('fatherName', v)} />
+    <FormInput label="Father's Occupation (optional)" value={data.fatherOccupation} onChange={(v) => onChange('fatherOccupation', v)} />
     <FormInput label="Mother's Name (optional)" value={data.motherName} onChange={(v) => onChange('motherName', v)} />
+    <FormInput label="Mother's Occupation (optional)" value={data.motherOccupation} onChange={(v) => onChange('motherOccupation', v)} />
     <FormInput label="Guardian's Name (optional)" value={data.guardianName} onChange={(v) => onChange('guardianName', v)} />
     <FormInput label="Guardian's Occupation (optional)" value={data.guardianOccupation} onChange={(v) => onChange('guardianOccupation', v)} />
 

@@ -47,6 +47,7 @@ const learnerToFormData = (learner: Learner): LearnerFormData => {
     district: learner.district,
     calendarYear: learner.calendarYear,
     mappedBy: learner.mappedBy,
+    alsImplementer: learner.alsImplementer ?? '',
 
     lastName: learner.lastName,
     firstName: learner.firstName,
@@ -75,7 +76,9 @@ const learnerToFormData = (learner: Learner): LearnerFormData => {
 
     roleInFamily: learner.roleInFamily,
     fatherName: learner.fatherName ?? '',
+    fatherOccupation: learner.fatherOccupation ?? '',
     motherName: learner.motherName ?? '',
+    motherOccupation: learner.motherOccupation ?? '',
     guardianName: learner.guardianName ?? '',
     guardianOccupation: learner.guardianOccupation ?? '',
 
@@ -194,6 +197,7 @@ const LearnerFormPage: React.FC = () => {
       district: formData.district,
       calendarYear: formData.calendarYear,
       mappedBy: trimText(formData.mappedBy),
+      alsImplementer: optionalTrimmedText(formData.alsImplementer),
       lastName: trimText(formData.lastName),
       firstName: trimText(formData.firstName),
       middleName: trimText(formData.middleName),
@@ -217,7 +221,9 @@ const LearnerFormPage: React.FC = () => {
       completeAddress: trimText(formData.completeAddress),
       roleInFamily: trimText(formData.roleInFamily),
       fatherName: optionalTrimmedText(formData.fatherName),
+      fatherOccupation: optionalTrimmedText(formData.fatherOccupation),
       motherName: optionalTrimmedText(formData.motherName),
+      motherOccupation: optionalTrimmedText(formData.motherOccupation),
       guardianName: optionalTrimmedText(formData.guardianName),
       guardianOccupation: optionalTrimmedText(formData.guardianOccupation),
       schoolName: optionalTrimmedText(formData.schoolName),

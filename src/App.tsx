@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { IonLoading, setupIonicReact } from '@ionic/react';
+import { IonLoading, IonToast, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
@@ -32,6 +32,8 @@ const App: React.FC = () => {
   const [currentUserId, setCurrentUserId] = useState('');
   const [pendingSyncCount, setPendingSyncCount] = useState<number>(() => getPendingLearnerSyncCount());
   const [isSyncingPendingLearners, setIsSyncingPendingLearners] = useState(false);
+  const [syncToastOpen, setSyncToastOpen] = useState(false);
+  const [syncToastMessage, setSyncToastMessage] = useState('');
 
   const refreshPendingSyncCount = () => {
     setPendingSyncCount(getPendingLearnerSyncCount());
@@ -42,9 +44,18 @@ const App: React.FC = () => {
     try {
       if (pendingBeforeSync > 0) {
         setIsSyncingPendingLearners(true);
-        await syncPendingLearnerOperations().catch(() => {
+        const syncResult = await syncPendingLearnerOperations().catch(() => {
           // Ignore background sync errors during learner refresh.
+          return null;
         });
+
+        if (syncResult && (syncResult.synced > 0 || syncResult.failed > 0)) {
+          const syncedLabel = `${syncResult.synced} learner${syncResult.synced === 1 ? '' : 's'} synced`;
+          const failedLabel =
+            syncResult.failed > 0 ? `, ${syncResult.failed} failed` : '';
+          setSyncToastMessage(`${syncedLabel}${failedLabel}`);
+          setSyncToastOpen(true);
+        }
       }
 
       const data = await fetchLearners();
@@ -210,6 +221,14 @@ const App: React.FC = () => {
     <AppProvider value={{ learners, setLearners, refreshLearners, pendingSyncCount, isSyncingPendingLearners, currentUserName, currentUserId }}>
       <IonLoading isOpen={loading} message="Please wait..." spinner="crescent" />
       <IonLoading isOpen={isSyncingPendingLearners} message="Syncing pending learners..." spinner="crescent" />
+      <IonToast
+        isOpen={syncToastOpen}
+        onDidDismiss={() => setSyncToastOpen(false)}
+        message={syncToastMessage}
+        duration={2200}
+        position="top"
+        color="success"
+      />
       {!loading && (
         <IonReactRouter>
           <Switch>

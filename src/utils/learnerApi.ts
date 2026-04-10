@@ -11,6 +11,7 @@ type LearnerRow = {
   district: string;
   calendar_year: number;
   mapped_by: string;
+  als_implementer?: string | null;
   last_name: string;
   first_name: string;
   middle_name: string;
@@ -34,7 +35,9 @@ type LearnerRow = {
   complete_address: string;
   role_in_family: string;
   father_name?: string | null;
+  father_occupation?: string | null;
   mother_name?: string | null;
+  mother_occupation?: string | null;
   guardian_name?: string | null;
   guardian_occupation?: string | null;
   school_name?: string | null;
@@ -78,7 +81,41 @@ type QueryResponse<T> = {
 
 type LearnerPayload = Record<string, unknown>;
 
+const YES_NO_OPTIONS = ['Yes', 'No'] as const;
+const OCCUPATION_TYPE_OPTIONS = ['Government', 'Private', 'Self-employed', 'Student', 'None'] as const;
+const EMPLOYMENT_STATUS_OPTIONS = ['Regular', 'Contractual', 'Casual', 'JO'] as const;
+const REASON_OPTIONS = [
+  'Schools are very far',
+  'No school within the barangay',
+  'No regular transportation',
+  'High cost of education',
+  'Illness / Disability',
+  'Housekeeping / Housework',
+  'Employment / Looking for work',
+  'Lack of personal interest',
+  'Cannot cope with school work',
+  'Others (Specify)'
+] as const;
+
 const missingColumnPattern = /Could not find the '([^']+)' column of 'learners' in the schema cache/i;
+
+const normalizeLabel = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, ' ');
+
+const normalizeEnumValue = <T extends readonly string[]>(value: string | undefined, options: T): string | undefined => {
+  if (!value) return value;
+  const normalizedInput = normalizeLabel(value);
+  const matched = options.find((option) => normalizeLabel(option) === normalizedInput);
+  return matched ?? value;
+};
+
+const normalizeLearnerForSync = (learner: Learner): Learner => ({
+  ...learner,
+  currentlyStudying: normalizeEnumValue(learner.currentlyStudying, YES_NO_OPTIONS) ?? learner.currentlyStudying,
+  interestedInALS: normalizeEnumValue(learner.interestedInALS, YES_NO_OPTIONS) ?? learner.interestedInALS,
+  occupationType: normalizeEnumValue(learner.occupationType, OCCUPATION_TYPE_OPTIONS) ?? learner.occupationType,
+  employmentStatus: normalizeEnumValue(learner.employmentStatus, EMPLOYMENT_STATUS_OPTIONS) ?? learner.employmentStatus,
+  reasonForNotAttending: normalizeEnumValue(learner.reasonForNotAttending, REASON_OPTIONS) ?? learner.reasonForNotAttending,
+});
 
 const withTimeout = async <T>(promise: Promise<T>, label: string): Promise<T> => {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -166,16 +203,19 @@ export const getPendingLearnerSyncCount = (): number => readPendingQueue().lengt
 export const getPendingLearnerSyncEventName = (): string => QUEUE_CHANGED_EVENT;
 
 const enqueuePendingOperation = (operation: Omit<PendingLearnerOperation, 'id' | 'queuedAt'>): void => {
+  const normalizedOperation = operation.learner
+    ? { ...operation, learner: normalizeLearnerForSync(operation.learner) }
+    : operation;
   const queue = readPendingQueue();
-  const existingCreateIndex = queue.findIndex((item) => item.learnerId === operation.learnerId && item.type === 'create');
-  const existingUpdateIndex = queue.findIndex((item) => item.learnerId === operation.learnerId && item.type === 'update');
-  const existingDeleteIndex = queue.findIndex((item) => item.learnerId === operation.learnerId && item.type === 'delete');
+  const existingCreateIndex = queue.findIndex((item) => item.learnerId === normalizedOperation.learnerId && item.type === 'create');
+  const existingUpdateIndex = queue.findIndex((item) => item.learnerId === normalizedOperation.learnerId && item.type === 'update');
+  const existingDeleteIndex = queue.findIndex((item) => item.learnerId === normalizedOperation.learnerId && item.type === 'delete');
 
-  if (operation.type === 'create') {
+  if (normalizedOperation.type === 'create') {
     if (existingCreateIndex >= 0) {
       queue[existingCreateIndex] = {
         ...queue[existingCreateIndex],
-        learner: operation.learner,
+        learner: normalizedOperation.learner,
         queuedAt: new Date().toISOString(),
       };
       writePendingQueue(queue);
@@ -183,11 +223,11 @@ const enqueuePendingOperation = (operation: Omit<PendingLearnerOperation, 'id' |
     }
   }
 
-  if (operation.type === 'update') {
+  if (normalizedOperation.type === 'update') {
     if (existingCreateIndex >= 0) {
       queue[existingCreateIndex] = {
         ...queue[existingCreateIndex],
-        learner: operation.learner,
+        learner: normalizedOperation.learner,
         queuedAt: new Date().toISOString(),
       };
       writePendingQueue(queue);
@@ -197,7 +237,7 @@ const enqueuePendingOperation = (operation: Omit<PendingLearnerOperation, 'id' |
     if (existingUpdateIndex >= 0) {
       queue[existingUpdateIndex] = {
         ...queue[existingUpdateIndex],
-        learner: operation.learner,
+        learner: normalizedOperation.learner,
         queuedAt: new Date().toISOString(),
       };
       writePendingQueue(queue);
@@ -205,14 +245,14 @@ const enqueuePendingOperation = (operation: Omit<PendingLearnerOperation, 'id' |
     }
   }
 
-  if (operation.type === 'delete') {
+  if (normalizedOperation.type === 'delete') {
     if (existingCreateIndex >= 0) {
-      const trimmed = queue.filter((item) => item.learnerId !== operation.learnerId);
+      const trimmed = queue.filter((item) => item.learnerId !== normalizedOperation.learnerId);
       writePendingQueue(trimmed);
       return;
     }
 
-    const withoutUpdates = queue.filter((item) => !(item.learnerId === operation.learnerId && item.type === 'update'));
+    const withoutUpdates = queue.filter((item) => !(item.learnerId === normalizedOperation.learnerId && item.type === 'update'));
     if (existingDeleteIndex >= 0) {
       writePendingQueue(withoutUpdates);
       return;
@@ -221,7 +261,7 @@ const enqueuePendingOperation = (operation: Omit<PendingLearnerOperation, 'id' |
     withoutUpdates.push({
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       queuedAt: new Date().toISOString(),
-      ...operation,
+      ...normalizedOperation,
     });
     writePendingQueue(withoutUpdates);
     return;
@@ -230,7 +270,7 @@ const enqueuePendingOperation = (operation: Omit<PendingLearnerOperation, 'id' |
   queue.push({
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     queuedAt: new Date().toISOString(),
-    ...operation,
+    ...normalizedOperation,
   });
   writePendingQueue(queue);
 };
@@ -273,6 +313,7 @@ const rowToLearner = (row: LearnerRow): Learner => ({
   district: stringValue(row.district),
   calendarYear: numberValue(row.calendar_year, new Date().getFullYear()),
   mappedBy: stringValue(row.mapped_by),
+  alsImplementer: row.als_implementer ?? undefined,
   lastName: stringValue(row.last_name),
   firstName: stringValue(row.first_name),
   middleName: stringValue(row.middle_name),
@@ -296,7 +337,9 @@ const rowToLearner = (row: LearnerRow): Learner => ({
   completeAddress: stringValue(row.complete_address),
   roleInFamily: stringValue(row.role_in_family),
   fatherName: row.father_name ?? undefined,
+  fatherOccupation: row.father_occupation ?? undefined,
   motherName: row.mother_name ?? undefined,
+  motherOccupation: row.mother_occupation ?? undefined,
   guardianName: row.guardian_name ?? undefined,
   guardianOccupation: row.guardian_occupation ?? undefined,
   schoolName: row.school_name ?? undefined,
@@ -324,6 +367,7 @@ const learnerToRow = (learner: Learner, createdBy: string | null): LearnerPayloa
   district: learner.district,
   calendar_year: learner.calendarYear,
   mapped_by: learner.mappedBy,
+  als_implementer: nullableText(learner.alsImplementer),
   last_name: learner.lastName,
   first_name: learner.firstName,
   middle_name: learner.middleName,
@@ -347,7 +391,9 @@ const learnerToRow = (learner: Learner, createdBy: string | null): LearnerPayloa
   complete_address: learner.completeAddress,
   role_in_family: learner.roleInFamily,
   father_name: learner.fatherName ?? null,
+  father_occupation: nullableText(learner.fatherOccupation),
   mother_name: learner.motherName ?? null,
+  mother_occupation: nullableText(learner.motherOccupation),
   guardian_name: learner.guardianName ?? null,
   guardian_occupation: learner.guardianOccupation ?? null,
   school_name: nullableText(learner.schoolName),
@@ -484,10 +530,11 @@ const runPendingLearnerSync = async (): Promise<{ synced: number; failed: number
   for (let index = 0; index < queue.length; index += 1) {
     const operation = queue[index];
     const resolvedLearnerId = idAlias.get(operation.learnerId) ?? operation.learnerId;
+    const normalizedLearner = operation.learner ? normalizeLearnerForSync(operation.learner) : undefined;
 
     try {
-      if (operation.type === 'create' && operation.learner) {
-        const created = await createLearnerOnServer({ ...operation.learner, id: resolvedLearnerId });
+      if (operation.type === 'create' && normalizedLearner) {
+        const created = await createLearnerOnServer({ ...normalizedLearner, id: resolvedLearnerId });
         idAlias.set(operation.learnerId, created.id);
 
         cache = cache.map((item) => (item.id === operation.learnerId ? created : item));
@@ -495,8 +542,8 @@ const runPendingLearnerSync = async (): Promise<{ synced: number; failed: number
         continue;
       }
 
-      if (operation.type === 'update' && operation.learner) {
-        const updated = await updateLearnerOnServer({ ...operation.learner, id: resolvedLearnerId });
+      if (operation.type === 'update' && normalizedLearner) {
+        const updated = await updateLearnerOnServer({ ...normalizedLearner, id: resolvedLearnerId });
         cache = cache.map((item) => {
           if (item.id === operation.learnerId || item.id === resolvedLearnerId) {
             return { ...item, ...updated, id: updated.id };
