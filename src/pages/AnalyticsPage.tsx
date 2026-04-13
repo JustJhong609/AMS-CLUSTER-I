@@ -20,7 +20,9 @@ import {
   IonModal,
 } from '@ionic/react';
 import { downloadOutline, filterOutline, closeCircle } from 'ionicons/icons';
-import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, type ChartOptions } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 import * as XLSX from 'xlsx';
@@ -51,40 +53,38 @@ type DownloadScope = 'municipality' | 'district' | 'barangay';
 type DownloadTarget = 'overall' | string;
 type ExportTargetOption = { label: string; value: string };
 
-const isJhsGradeCompleted = (grade?: string): boolean => Boolean(
-  grade?.includes('1st Year HS') ||
-  grade?.includes('2nd Year HS') ||
-  grade?.includes('3rd Year HS') ||
-  grade?.includes('4th Year HS')
-);
+const isElementaryGradeCompleted = (grade?: string): boolean => {
+  if (!grade) return false;
+  const normalized = grade.trim().toLowerCase();
+
+  return (
+    normalized === 'kindergarten' ||
+    normalized === 'g1 – g6 (elementary)' ||
+    /^g[1-6]$/.test(normalized) ||
+    normalized === 'grade 6 graduate'
+  );
+};
+
+const isJhsGradeCompleted = (grade?: string): boolean => {
+  if (!grade) return false;
+  const normalized = grade.trim().toLowerCase();
+
+  return (
+    /^g(7|8|9|10)(\b|\/)/.test(normalized) ||
+    normalized.includes('1st year hs') ||
+    normalized.includes('2nd year hs') ||
+    normalized.includes('3rd year hs') ||
+    normalized.includes('4th year hs') ||
+    normalized.includes('1st year high school') ||
+    normalized.includes('2nd year high school') ||
+    normalized.includes('3rd year high school') ||
+    normalized.includes('4th year high school') ||
+    normalized === 'g10 completer'
+  );
+};
 
 type ExportScope = DownloadScope;
 type ExportRow = Record<string, string | number | boolean>;
-
-type CapacitorFilesystem = {
-  writeFile(options: {
-    path: string;
-    data: string;
-    directory?: string;
-    recursive?: boolean;
-  }): Promise<void>;
-  getUri(options: {
-    path: string;
-    directory?: string;
-  }): Promise<{ uri: string }>;
-};
-
-type CapacitorShare = {
-  share(options: {
-    title?: string;
-    text?: string;
-    url?: string;
-    dialogTitle?: string;
-  }): Promise<void>;
-};
-
-const Filesystem = registerPlugin<CapacitorFilesystem>('Filesystem');
-const Share = registerPlugin<CapacitorShare>('Share');
 
 const HEADING_STYLE: React.CSSProperties = {
   fontSize: 14,
@@ -252,7 +252,7 @@ const AnalyticsPage: React.FC = () => {
       else senior += 1;
 
       if (l.isBlp) blp += 1;
-      else if (l.lastGradeCompleted === 'G1 – G6 (Elementary)') elementary += 1;
+      else if (isElementaryGradeCompleted(l.lastGradeCompleted)) elementary += 1;
       else if (isJhsGradeCompleted(l.lastGradeCompleted)) {
         jhs += 1;
       }
@@ -513,7 +513,7 @@ const AnalyticsPage: React.FC = () => {
     return districtOptions.map((district) => [district, counts[district] || 0] as [string, number]);
   };
 
-  const isElementaryLearner = (learner: typeof learners[number]) => learner.lastGradeCompleted === 'G1 – G6 (Elementary)' && !learner.isBlp;
+  const isElementaryLearner = (learner: typeof learners[number]) => isElementaryGradeCompleted(learner.lastGradeCompleted) && !learner.isBlp;
   const isJhsLearner = (learner: typeof learners[number]) => isJhsGradeCompleted(learner.lastGradeCompleted) && !learner.isBlp;
   const isBlpLearner = (learner: typeof learners[number]) => learner.isBlp;
 
@@ -582,11 +582,11 @@ const AnalyticsPage: React.FC = () => {
           await Filesystem.writeFile({
             path: exportPath,
             data: base64Data,
-            directory: 'CACHE',
+            directory: Directory.Cache,
             recursive: true,
           });
 
-          const { uri } = await Filesystem.getUri({ path: exportPath, directory: 'CACHE' });
+          const { uri } = await Filesystem.getUri({ path: exportPath, directory: Directory.Cache });
           await Share.share({
             title: 'ALS Learner Export',
             text: 'Learner analytics export',

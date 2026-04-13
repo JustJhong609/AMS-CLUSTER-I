@@ -451,7 +451,11 @@ const LearnerListPage: React.FC = () => {
             }
           }}
         >
-          <IonRefresherContent pullingText="Pull to refresh" refreshingText="Refreshing learners..." />
+          <IonRefresherContent
+            pullingIcon="lines"
+            pullingText="Pull to refresh"
+            refreshingText="Refreshing learners..."
+          />
         </IonRefresher>
 
         {pendingSyncCount > 0 && (

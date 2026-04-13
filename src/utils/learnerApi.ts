@@ -1,4 +1,5 @@
 import { Learner, MunicipalityKey } from '../types';
+import { GRADE_LEVELS } from './constants';
 import { supabase } from './supabase';
 
 type LearnerRow = {
@@ -82,7 +83,7 @@ type QueryResponse<T> = {
 type LearnerPayload = Record<string, unknown>;
 
 const YES_NO_OPTIONS = ['Yes', 'No'] as const;
-const OCCUPATION_TYPE_OPTIONS = ['Government', 'Private', 'Self-employed', 'Student', 'None'] as const;
+const OCCUPATION_TYPE_OPTIONS = ['Government', 'Private', 'Self-employed', 'None'] as const;
 const EMPLOYMENT_STATUS_OPTIONS = ['Regular', 'Contractual', 'Casual', 'JO'] as const;
 const REASON_OPTIONS = [
   'Schools are very far',
@@ -94,8 +95,12 @@ const REASON_OPTIONS = [
   'Employment / Looking for work',
   'Lack of personal interest',
   'Cannot cope with school work',
+  'JHS Completer',
+  'SHS Graduate',
+  'College Graduate',
   'Others (Specify)'
 ] as const;
+const GRADE_LEVEL_OPTIONS = GRADE_LEVELS;
 
 const missingColumnPattern = /Could not find the '([^']+)' column of 'learners' in the schema cache/i;
 
@@ -112,6 +117,7 @@ const normalizeLearnerForSync = (learner: Learner): Learner => ({
   ...learner,
   currentlyStudying: normalizeEnumValue(learner.currentlyStudying, YES_NO_OPTIONS) ?? learner.currentlyStudying,
   interestedInALS: normalizeEnumValue(learner.interestedInALS, YES_NO_OPTIONS) ?? learner.interestedInALS,
+  lastGradeCompleted: normalizeEnumValue(learner.lastGradeCompleted, GRADE_LEVEL_OPTIONS) ?? learner.lastGradeCompleted,
   occupationType: normalizeEnumValue(learner.occupationType, OCCUPATION_TYPE_OPTIONS) ?? learner.occupationType,
   employmentStatus: normalizeEnumValue(learner.employmentStatus, EMPLOYMENT_STATUS_OPTIONS) ?? learner.employmentStatus,
   reasonForNotAttending: normalizeEnumValue(learner.reasonForNotAttending, REASON_OPTIONS) ?? learner.reasonForNotAttending,
@@ -449,19 +455,16 @@ const insertLearnerRow = async (client: ReturnType<typeof requireSupabase>, payl
 
 const createLearnerOnServer = async (learner: Learner): Promise<Learner> => {
   const client = requireSupabase();
-  const { data: authData, error: authError } = await client.auth.getUser();
+  const normalizedLearner = normalizeLearnerForSync(learner);
+  const { data: sessionData } = await client.auth.getSession();
 
-  if (authError) {
-    throw authError;
-  }
-
-  const createdBy = authData.user?.id ?? null;
-  const payload = learnerToRow(learner, createdBy);
+  const createdBy = sessionData.session?.user?.id ?? null;
+  const payload = learnerToRow(normalizedLearner, createdBy);
   const savedRow = await withTimeout(insertLearnerRow(client, payload), 'Saving learner');
 
   return {
-    ...learner,
-    id: savedRow.id ?? learner.id,
+    ...normalizedLearner,
+    id: savedRow.id ?? normalizedLearner.id,
     createdBy: savedRow.created_by ?? createdBy ?? undefined,
     updatedAt: savedRow.updated_at ?? savedRow.created_at ?? undefined,
   };
@@ -469,13 +472,11 @@ const createLearnerOnServer = async (learner: Learner): Promise<Learner> => {
 
 const updateLearnerOnServer = async (learner: Learner): Promise<Learner> => {
   const client = requireSupabase();
-  const { data: authData, error: authError } = await client.auth.getUser();
+  const normalizedLearner = normalizeLearnerForSync(learner);
+  const { data: sessionData } = await client.auth.getSession();
+  const actorId = sessionData.session?.user?.id ?? null;
 
-  if (authError) {
-    throw authError;
-  }
-
-  const payload = learnerToRow(learner, authData.user?.id ?? learner.createdBy ?? null);
+  const payload = learnerToRow(normalizedLearner, actorId ?? learner.createdBy ?? null);
   let currentPayload = { ...payload };
 
   for (let attempt = 0; attempt < 12; attempt += 1) {
@@ -483,7 +484,7 @@ const updateLearnerOnServer = async (learner: Learner): Promise<Learner> => {
 
     if (!error && data) {
       return {
-        ...learner,
+        ...normalizedLearner,
         updatedAt: (data as LearnerRow).updated_at ?? (data as LearnerRow).created_at ?? undefined,
       };
     }
