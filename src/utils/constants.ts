@@ -32,7 +32,7 @@ export const MOTHER_TONGUE_OPTIONS = [
   'Maranao'
 ] as const;
 
-export const OCCUPATION_TYPE_OPTIONS = ['Government', 'Private', 'Self-employed', 'Student', 'None'] as const;
+export const OCCUPATION_TYPE_OPTIONS = ['Government', 'Private', 'Self-employed', 'None'] as const;
 
 export const EMPLOYMENT_STATUS_OPTIONS = ['Regular', 'Contractual', 'Casual', 'JO'] as const;
 
@@ -46,6 +46,9 @@ export const REASON_OPTIONS = [
   'Employment / Looking for work',
   'Lack of personal interest',
   'Cannot cope with school work',
+  'JHS Completer',
+  'SHS Graduate',
+  'College Graduate',
   'Others (Specify)'
 ] as const;
 
@@ -134,14 +137,32 @@ export const TRANSPORT_OPTIONS = [
 ] as const;
 
 export const GRADE_LEVELS = [
-  'G1 – G6 (Elementary)',
-  '1st Year HS / Grade 7',
-  '2nd Year HS / Grade 8',
-  '3rd Year HS / Grade 9',
-  '4th Year HS / Grade 10',
+  'Kindergarten',
+  'G1',
+  'G2',
+  'G3',
+  'G4',
+  'G5',
+  'G6',
+  'Grade 6 Graduate',
+  'G7/1st Year High School',
+  'G8/2nd Year High School',
+  'G9/3rd Year High School',
+  'G10/4th Year High School',
+  'G10 Completer',
   'High School Graduate',
-  'Grade 11 Vocational',
-  'Senior HS Graduate'
+  'G11',
+  'G12',
+  'SHS Graduate',
+  '1st Year College',
+  '2nd Year College',
+  '3rd Year College',
+  '4th Year College',
+  '5th Year College',
+  'College Graduate',
+  'Vocational Course Graduate (ex. TESDA etc.)',
+  "Master's Degree",
+  'Doctoral Degree'
 ] as const;
 
 export const SESSION_TIME_OPTIONS = [

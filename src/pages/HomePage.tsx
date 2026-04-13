@@ -41,14 +41,37 @@ const HomePage: React.FC = () => {
   const [showAbout, setShowAbout] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+  const isElementaryGradeCompleted = (grade?: string): boolean => {
+    if (!grade) return false;
+    const normalized = grade.trim().toLowerCase();
+    return (
+      normalized === 'kindergarten' ||
+      normalized === 'g1 – g6 (elementary)' ||
+      /^g[1-6]$/.test(normalized) ||
+      normalized === 'grade 6 graduate'
+    );
+  };
+
+  const isJhsGradeCompleted = (grade?: string): boolean => {
+    if (!grade) return false;
+    const normalized = grade.trim().toLowerCase();
+    return (
+      /^g(7|8|9|10)(\b|\/)/.test(normalized) ||
+      normalized.includes('1st year hs') ||
+      normalized.includes('2nd year hs') ||
+      normalized.includes('3rd year hs') ||
+      normalized.includes('4th year hs') ||
+      normalized.includes('1st year high school') ||
+      normalized.includes('2nd year high school') ||
+      normalized.includes('3rd year high school') ||
+      normalized.includes('4th year high school') ||
+      normalized === 'g10 completer'
+    );
+  };
+
   const total = learners.length;
-  const elementary = learners.filter((l) => l.lastGradeCompleted === 'G1 – G6 (Elementary)').length;
-  const jhs = learners.filter((l) =>
-    l.lastGradeCompleted?.includes('1st Year HS') ||
-    l.lastGradeCompleted?.includes('2nd Year HS') ||
-    l.lastGradeCompleted?.includes('3rd Year HS') ||
-    l.lastGradeCompleted?.includes('4th Year HS')
-  ).length;
+  const elementary = learners.filter((l) => isElementaryGradeCompleted(l.lastGradeCompleted)).length;
+  const jhs = learners.filter((l) => isJhsGradeCompleted(l.lastGradeCompleted)).length;
   const blp = learners.filter((l) => l.isBlp).length;
 
   const handleLogout = async () => {
@@ -175,7 +198,11 @@ const HomePage: React.FC = () => {
             }
           }}
         >
-          <IonRefresherContent pullingText="Pull to refresh" refreshingText="Refreshing learners..." />
+          <IonRefresherContent
+            pullingIcon="lines"
+            pullingText="Pull to refresh"
+            refreshingText="Refreshing learners..."
+          />
         </IonRefresher>
 
         {pendingSyncCount > 0 && (
